@@ -1,0 +1,26 @@
+{
+  "name": "astro-cms",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A small, self-hosted CMS for one Astro project on GitHub.",
+  "type": "module",
+  "packageManager": "pnpm@12.4.1",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "pnpm --recursive --parallel dev",
+    "build": "pnpm --recursive build",
+    "typecheck": "pnpm --recursive typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "pnpm --recursive test",
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test"
+  },
+  "devDependencies": {
+    "@astro-cms/eslint-config": "workspace:*",
+    "eslint": "catalog:",
+    "prettier": "catalog:"
+  }
+}

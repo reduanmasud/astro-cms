@@ -1,0 +1,16 @@
+# Development image: dependencies only. Source code is bind-mounted by
+# compose.yaml so edits on the host reload inside the containers.
+FROM node:24-trixie-slim
+
+# pnpm 12 ships as a native binary that the Corepack bundled with Node 24
+# cannot launch, so install it from npm. Keep in sync with "packageManager".
+RUN npm install --global pnpm@12.4.1
+
+WORKDIR /app
+
+# Manifests first so the install layer is cached until dependencies change.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/server/package.json apps/server/
+COPY apps/web/package.json apps/web/
+COPY tooling/eslint-config/package.json tooling/eslint-config/
+RUN pnpm install --frozen-lockfile
