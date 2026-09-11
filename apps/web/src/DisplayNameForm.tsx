@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type JSX } from "react";
 import { chooseDisplayName, type Collaborator } from "./api.ts";
 
 const REMEMBERED_NAME_KEY = "astro-cms:display-name";
@@ -19,11 +19,13 @@ function rememberName(name: string): void {
   }
 }
 
+export interface DisplayNameFormProps {
+  onChosen: (collaborator: Collaborator) => void;
+}
+
 export function DisplayNameForm({
   onChosen,
-}: {
-  onChosen: (collaborator: Collaborator) => void;
-}) {
+}: DisplayNameFormProps): JSX.Element {
   const [name, setName] = useState(rememberedName);
   const [error, setError] = useState<string>();
   const [submitting, setSubmitting] = useState(false);

@@ -4,16 +4,31 @@ import { serve } from "@hono/node-server";
 import { createApp } from "./app.ts";
 import { ConfigError, loadConfig } from "./config.ts";
 import { openDatabase } from "./db/database.ts";
+import { createHttpGitHubClient } from "./github/http-client.ts";
 import { createRateLimiter } from "./lib/rate-limiter.ts";
 import { createCollaboratorService } from "./services/collaborators.ts";
 import { createHealthService } from "./services/health.ts";
+import {
+  createRepositoryService,
+  RepositoryError,
+} from "./services/repository.ts";
 import { createSessionService } from "./services/sessions.ts";
 
 const LOGIN_ATTEMPTS_PER_WINDOW = 10;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 
-function main(): void {
+async function main(): Promise<void> {
   const config = loadConfig(process.env);
+
+  // Fail fast: the CMS is useless without its one repository.
+  const repository = createRepositoryService({
+    github: createHttpGitHubClient(config.github),
+    baseBranch: config.github.baseBranch,
+  });
+  const access = await repository.verifyAccess();
+  console.info(
+    `Connected to ${access.fullName} (${access.baseBranch} @ ${access.headSha.slice(0, 7)})`,
+  );
 
   mkdirSync(config.dataDir, { recursive: true });
   const db = openDatabase(join(config.dataDir, "cms.sqlite"));
@@ -48,9 +63,9 @@ function main(): void {
   process.once("SIGTERM", shutdown);
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(error instanceof ConfigError ? error.message : error);
+main().catch((error: unknown) => {
+  const known =
+    error instanceof ConfigError || error instanceof RepositoryError;
+  console.error(known ? error.message : error);
   process.exit(1);
-}
+});

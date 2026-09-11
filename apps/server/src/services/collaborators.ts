@@ -9,22 +9,22 @@ const MAX_NAME_LENGTH = 40;
  * A lightweight identity: a display name, not an account. Anyone who knows
  * the CMS password can use any name (docs/adr/0009-minimal-authentication.md).
  */
-export type Collaborator = {
+export interface Collaborator {
   readonly id: string;
   readonly name: string;
-};
+}
 
-export type CollaboratorService = {
+export interface CollaboratorService {
   /** Returns the collaborator with this name (case-insensitive), creating it if needed. */
   claim(name: string): Collaborator;
   /** Records activity, writing at most once per LAST_SEEN_THROTTLE_MS. */
   touch(id: string): void;
-};
+}
 
-type Deps = {
+interface Deps {
   db: Db;
   now?: () => number;
-};
+}
 
 /** Trims a display name; returns undefined when it is empty, too long, or has control characters. */
 export function normalizeDisplayName(value: string): string | undefined {

@@ -1,10 +1,24 @@
-export type Config = {
+import {
+  isValidBranchName,
+  isValidOwner,
+  isValidRepositoryName,
+} from "./github/names.ts";
+
+export interface GitHubConfig {
+  readonly token: string;
+  readonly owner: string;
+  readonly repository: string;
+  readonly baseBranch: string;
+}
+
+export interface Config {
   readonly port: number;
   readonly dataDir: string;
   readonly cmsPassword: string;
   readonly sessionSecret: string;
   readonly cookieSecure: boolean;
-};
+  readonly github: GitHubConfig;
+}
 
 type Env = Readonly<Record<string, string | undefined>>;
 
@@ -12,6 +26,7 @@ const MIN_PASSWORD_LENGTH = 12;
 const MIN_SECRET_LENGTH = 32;
 const DEFAULT_PORT = 3000;
 const DEFAULT_DATA_DIR = "data";
+const DEFAULT_BASE_BRANCH = "main";
 
 export class ConfigError extends Error {
   readonly problems: readonly string[];
@@ -55,6 +70,14 @@ export function loadConfig(env: Env): Config {
     problems.push('COOKIE_SECURE must be "true" or "false".');
   }
 
+  const github = {
+    token: env.GITHUB_TOKEN ?? "",
+    owner: env.GITHUB_OWNER ?? "",
+    repository: env.GITHUB_REPOSITORY ?? "",
+    baseBranch: env.GITHUB_BASE_BRANCH || DEFAULT_BASE_BRANCH,
+  };
+  problems.push(...checkGitHub(github));
+
   if (problems.length > 0 || port === undefined || cookieSecure === undefined) {
     throw new ConfigError(problems);
   }
@@ -65,7 +88,32 @@ export function loadConfig(env: Env): Config {
     cmsPassword,
     sessionSecret,
     cookieSecure,
+    github,
   };
+}
+
+function checkGitHub(github: GitHubConfig): string[] {
+  const problems: string[] = [];
+  if (github.token === "") problems.push("GITHUB_TOKEN is required.");
+
+  if (github.owner === "") problems.push("GITHUB_OWNER is required.");
+  else if (!isValidOwner(github.owner)) {
+    problems.push(
+      "GITHUB_OWNER is not a valid GitHub user or organization name.",
+    );
+  }
+
+  if (github.repository === "") problems.push("GITHUB_REPOSITORY is required.");
+  else if (!isValidRepositoryName(github.repository)) {
+    problems.push(
+      "GITHUB_REPOSITORY is not a valid repository name (use the name only, not owner/name).",
+    );
+  }
+
+  if (!isValidBranchName(github.baseBranch)) {
+    problems.push("GITHUB_BASE_BRANCH is not a valid branch name.");
+  }
+  return problems;
 }
 
 function checkSecret(name: string, value: string, minLength: number): string[] {

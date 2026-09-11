@@ -8,11 +8,11 @@ import {
 
 export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
-export type Session = {
+export interface Session {
   /** Null until the user chooses a display name after logging in. */
   readonly collaborator: Collaborator | null;
   readonly expiresAt: number;
-};
+}
 
 export type LoginResult =
   | { readonly ok: true; readonly token: string; readonly session: Session }
@@ -25,26 +25,26 @@ export type ChooseDisplayNameResult =
       readonly reason: "invalid_display_name" | "unauthenticated";
     };
 
-export type SessionService = {
+export interface SessionService {
   login(input: { password: string }): LoginResult;
   /** Looks up a live session and records collaborator activity. */
   resolve(token: string): Session | undefined;
   chooseDisplayName(token: string, name: string): ChooseDisplayNameResult;
   logout(token: string): void;
-};
+}
 
-type Deps = {
+interface Deps {
   db: Db;
   password: string;
   collaborators: CollaboratorService;
   now?: () => number;
-};
+}
 
-type SessionRow = {
+interface SessionRow {
   expires_at: number;
   collaborator_id: string | null;
   collaborator_name: string | null;
-};
+}
 
 /**
  * Shared-password sessions. Only a SHA-256 hash of each token is stored; the

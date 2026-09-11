@@ -9,13 +9,13 @@ import { sessionRoutes } from "./routes/session.ts";
 import type { HealthService } from "./services/health.ts";
 import type { SessionService } from "./services/sessions.ts";
 
-export type AppDeps = {
+export interface AppDeps {
   health: HealthService;
   sessions: SessionService;
   loginLimiter: RateLimiter;
   sessionSecret: string;
   cookieSecure: boolean;
-};
+}
 
 /**
  * Everything under /api requires a session except these. New routes are
@@ -37,7 +37,7 @@ export function createApp({
   loginLimiter,
   sessionSecret,
   cookieSecure,
-}: AppDeps) {
+}: AppDeps): Hono<AuthEnv> {
   const app = new Hono<AuthEnv>();
   const cookie = { secret: sessionSecret, secure: cookieSecure };
   const requireSession = authenticate(sessions, cookie);

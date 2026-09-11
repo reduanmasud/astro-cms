@@ -11,17 +11,21 @@ import {
 import type { RateLimiter } from "../lib/rate-limiter.ts";
 import type { Session, SessionService } from "../services/sessions.ts";
 
-type Deps = {
+interface Deps {
   sessions: SessionService;
   loginLimiter: RateLimiter;
   cookie: CookieSettings;
-};
+}
 
 /**
  * `/api/session`: log in, read the session, choose a display name, log out.
  * POST and DELETE are public; the rest sit behind `authenticate` (see app.ts).
  */
-export function sessionRoutes({ sessions, loginLimiter, cookie }: Deps) {
+export function sessionRoutes({
+  sessions,
+  loginLimiter,
+  cookie,
+}: Deps): Hono<AuthEnv> {
   const routes = new Hono<AuthEnv>();
 
   routes.post("/", async (c) => {

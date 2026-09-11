@@ -125,6 +125,32 @@ Collaboration is live editing, presence, and cursors only
    Media with zero references is marked unused, kept 7 days, rechecked, then
    deleted ([ADR-0008](adr/0008-media-storage-and-gc.md)).
 
+## GitHub integration
+
+The CMS talks to its one repository through the GitHub REST API only; there is
+no local clone ([ADR-0003](adr/0003-github-api-no-clone.md)).
+
+| Piece              | File                                     | Role                                                                                     |
+| ------------------ | ---------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `GitHubClient`     | `apps/server/src/github/client.ts`       | Small interface: read files, list the tree, branches, commits, pull requests.            |
+| HTTP client        | `apps/server/src/github/http-client.ts`  | Implements it with `fetch` against the REST API. The only code that sees `GITHUB_TOKEN`. |
+| Fake client        | `apps/server/src/github/fake.ts`         | In-memory repository used by tests.                                                      |
+| Repository service | `apps/server/src/services/repository.ts` | CMS rules on top of the client.                                                          |
+
+Rules the repository service enforces:
+
+- At startup it checks the token, push permission, and base branch; the server
+  does not start otherwise.
+- The base branch is read-only. Writes go only to `cms/…` branches
+  ([ADR-0004](adr/0004-one-branch-per-content-item.md)).
+- File paths must be repository-relative (no leading `/`, `..`, or `\`).
+- Saving to a branch creates it from the base head if missing, adds one commit
+  (the Git Data API; the branch moves fast-forward only, which is the "push"),
+  and opens a pull request if the branch has none. Later saves add commits to
+  the same branch and pull request.
+- A `cms/` branch that still exists after its pull request was merged or
+  closed is refused, so old history is never reopened.
+
 ## Authentication
 
 | Caller     | Credential                                                            | Identity                        |

@@ -1,15 +1,15 @@
-export type RateLimiter = {
+export interface RateLimiter {
   /** True when `key` has reached its limit in the current window. Does not count as a hit. */
   isBlocked(key: string): boolean;
   /** Records one hit (e.g. a failed login) for `key`. */
   hit(key: string): void;
-};
+}
 
-type Options = {
+interface Options {
   limit: number;
   windowMs: number;
   now?: () => number;
-};
+}
 
 const SWEEP_THRESHOLD = 1000;
 

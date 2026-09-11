@@ -3,7 +3,13 @@ import { ConfigError, loadConfig } from "./config.ts";
 
 const PASSWORD = "correct-horse-battery";
 const SECRET = "x".repeat(32);
-const required = { CMS_PASSWORD: PASSWORD, SESSION_SECRET: SECRET };
+const required = {
+  CMS_PASSWORD: PASSWORD,
+  SESSION_SECRET: SECRET,
+  GITHUB_TOKEN: "ghp_test",
+  GITHUB_OWNER: "withastro",
+  GITHUB_REPOSITORY: "blog",
+};
 
 describe("loadConfig", () => {
   it("applies defaults when only the required values are set", () => {
@@ -13,6 +19,12 @@ describe("loadConfig", () => {
       cmsPassword: PASSWORD,
       sessionSecret: SECRET,
       cookieSecure: false,
+      github: {
+        token: "ghp_test",
+        owner: "withastro",
+        repository: "blog",
+        baseBranch: "main",
+      },
     });
   });
 
@@ -87,6 +99,31 @@ describe("loadConfig", () => {
     );
   });
 
+  it("reads GITHUB_BASE_BRANCH", () => {
+    const config = loadConfig({ ...required, GITHUB_BASE_BRANCH: "trunk" });
+
+    expect(config.github.baseBranch).toBe("trunk");
+  });
+
+  it.each(["GITHUB_TOKEN", "GITHUB_OWNER", "GITHUB_REPOSITORY"])(
+    "requires %s",
+    (name) => {
+      expect(() => loadConfig({ ...required, [name]: "" })).toThrow(
+        new RegExp(`${name} is required`),
+      );
+    },
+  );
+
+  it.each([
+    ["GITHUB_OWNER", "not/valid"],
+    ["GITHUB_REPOSITORY", "has spaces"],
+    ["GITHUB_BASE_BRANCH", "../escape"],
+  ])("rejects an invalid %s", (name, value) => {
+    expect(() => loadConfig({ ...required, [name]: value })).toThrow(
+      new RegExp(`${name} `),
+    );
+  });
+
   it("reports every problem at once", () => {
     let problems: readonly string[] = [];
     try {
@@ -95,6 +132,6 @@ describe("loadConfig", () => {
       if (error instanceof ConfigError) problems = error.problems;
     }
 
-    expect(problems).toHaveLength(4);
+    expect(problems).toHaveLength(7);
   });
 });

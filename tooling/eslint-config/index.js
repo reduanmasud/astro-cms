@@ -36,6 +36,13 @@ export function createConfig({ rootDir }) {
       },
       rules: {
         "@typescript-eslint/consistent-type-imports": "error",
+        // Object shapes are interfaces; `type` is for unions, aliases, and utility types.
+        "@typescript-eslint/consistent-type-definitions": [
+          "error",
+          "interface",
+        ],
+        // Exported functions declare their parameter and return types.
+        "@typescript-eslint/explicit-module-boundary-types": "error",
         "@typescript-eslint/no-unused-vars": [
           "error",
           { argsIgnorePattern: "^_" },
@@ -46,6 +53,11 @@ export function createConfig({ rootDir }) {
       // Plain JS config files are not part of any tsconfig, so skip type-aware rules.
       files: ["**/*.js"],
       ...tseslint.configs.disableTypeChecked,
+      rules: {
+        ...tseslint.configs.disableTypeChecked.rules,
+        // Plain JS cannot carry type annotations; JSDoc documents the types instead.
+        "@typescript-eslint/explicit-module-boundary-types": "off",
+      },
       languageOptions: {
         ...tseslint.configs.disableTypeChecked.languageOptions,
         globals: globals.node,

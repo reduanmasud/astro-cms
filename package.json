@@ -16,7 +16,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "pnpm --recursive test",
-    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test"
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
+    "github": "pnpm --filter @astro-cms/server github"
   },
   "devDependencies": {
     "@astro-cms/eslint-config": "workspace:*",

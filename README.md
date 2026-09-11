@@ -11,8 +11,8 @@ A small, self-hosted CMS for **one Astro project in one GitHub repository**.
 - Auth is one shared password plus a display name. No accounts, teams, or OAuth.
 
 > **Status: early.** The workspace, the health endpoint, shared-password
-> login, display names, and the app shell exist. Editing, GitHub publishing,
-> media, and MCP are not built yet.
+> login, display names, the app shell, and the GitHub repository service
+> exist. Editing, the publishing flow, media, and MCP are not built yet.
 
 ## Documentation
 
@@ -47,6 +47,17 @@ cp .env.example .env
 Set `CMS_PASSWORD` (12+ characters) and `SESSION_SECRET` (32+ characters).
 `openssl rand -base64 32` produces a good secret. The browser never receives
 either value.
+
+Then connect the one GitHub repository the CMS edits:
+
+- `GITHUB_OWNER` and `GITHUB_REPOSITORY`, e.g. `withastro` and `blog`.
+- `GITHUB_BASE_BRANCH`, the branch pull requests target (default `main`).
+- `GITHUB_TOKEN`: a [fine-grained personal access token](https://github.com/settings/personal-access-tokens/new)
+  limited to that repository, with read and write access to **Contents** and
+  **Pull requests**.
+
+The server checks the token, push access, and base branch at startup, and
+stops with an explanation if something is wrong.
 
 ## Develop with Docker Compose
 
@@ -113,6 +124,9 @@ See [docs/architecture.md](docs/architecture.md#repository-layout) for more.
   it to `PUBLIC_ROUTES` in `apps/server/src/app.ts`.
 - Server code must be erasable TypeScript (no `enum`, no parameter
   properties), and relative imports use the `.ts` extension.
+- Use `interface` for object shapes and component props; use `type` for
+  unions and aliases. Exported functions declare their return types. ESLint
+  enforces both.
 - Put tests next to the code (`*.test.ts`) and run `pnpm check` before
   opening a PR.
 

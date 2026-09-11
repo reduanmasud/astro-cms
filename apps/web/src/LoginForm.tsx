@@ -1,11 +1,11 @@
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type JSX } from "react";
 import { login, type Session } from "./api.ts";
 
-export function LoginForm({
-  onSignedIn,
-}: {
+export interface LoginFormProps {
   onSignedIn: (session: Session) => void;
-}) {
+}
+
+export function LoginForm({ onSignedIn }: LoginFormProps): JSX.Element {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string>();
   const [submitting, setSubmitting] = useState(false);

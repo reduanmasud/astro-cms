@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type JSX } from "react";
 import { getSession, logout, type Collaborator, type Session } from "./api.ts";
 import { DisplayNameForm } from "./DisplayNameForm.tsx";
 import { LoginForm } from "./LoginForm.tsx";
@@ -9,7 +9,7 @@ type State =
   | { status: "signed-out" }
   | { status: "signed-in"; session: Session };
 
-export function App() {
+export function App(): JSX.Element {
   const [state, setState] = useState<State>({ status: "loading" });
 
   useEffect(() => {
@@ -61,13 +61,12 @@ export function App() {
   }
 }
 
-function Shell({
-  collaborator,
-  onLogout,
-}: {
+interface ShellProps {
   collaborator: Collaborator;
   onLogout: () => void;
-}) {
+}
+
+function Shell({ collaborator, onLogout }: ShellProps): JSX.Element {
   return (
     <div className="shell">
       <header className="topbar">

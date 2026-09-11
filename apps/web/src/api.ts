@@ -1,9 +1,16 @@
-export type Collaborator = { id: string; name: string };
+export interface Collaborator {
+  id: string;
+  name: string;
+}
 
 /** `collaborator` is null until a display name has been chosen. */
-export type Session = { collaborator: Collaborator | null };
+export interface Session {
+  collaborator: Collaborator | null;
+}
 
-type ErrorBody = { error?: { code?: string; message?: string } };
+interface ErrorBody {
+  error?: { code?: string; message?: string };
+}
 
 export class ApiError extends Error {
   readonly status: number;

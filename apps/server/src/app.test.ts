@@ -12,11 +12,11 @@ import { createSessionService } from "./services/sessions.ts";
 const PASSWORD = "correct-horse-battery";
 const SECRET = "test-session-secret-that-is-long-enough";
 
-type Body = {
+interface Body {
   ok?: boolean;
   collaborator?: { id: string; name: string } | null;
   error?: { code: string; message: string };
-};
+}
 
 function buildApp(
   options: { db?: Db; loginLimit?: number; secret?: string } = {},
