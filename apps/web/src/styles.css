@@ -66,3 +66,99 @@ button {
   margin: 0;
   opacity: 0.75;
 }
+
+.content {
+  display: grid;
+  gap: 1rem;
+  max-width: 48rem;
+}
+
+.card {
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.card-header h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.repo-line {
+  margin: 0.75rem 0 0.25rem;
+  overflow-wrap: anywhere;
+}
+
+.summary {
+  margin: 0 0 1rem;
+  font-weight: 600;
+}
+
+.summary.ok,
+.checks .ok .mark {
+  color: #2e7d32;
+}
+
+.summary.fail,
+.checks .fail .mark {
+  color: #c62828;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+}
+
+.stats dt {
+  font-size: 0.8125rem;
+  opacity: 0.75;
+}
+
+.stats dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.mono,
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.checks {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.checks li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.mark {
+  font-weight: 700;
+  width: 1rem;
+  flex-shrink: 0;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

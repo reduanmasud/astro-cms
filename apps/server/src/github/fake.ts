@@ -10,8 +10,11 @@ export interface FakeOptions {
   files?: Record<string, string>;
   baseBranch?: string;
   canPush?: boolean;
+  tokenExpiresAt?: string | null;
   /** Make every call fail with this HTTP status. */
   failWith?: number;
+  /** Make listing pull requests fail with this HTTP status. */
+  pullRequestsFailWith?: number;
 }
 
 /** The fake client plus helpers for inspecting its state in assertions. */
@@ -31,7 +34,9 @@ export function createFakeGitHubClient({
   files = {},
   baseBranch = "main",
   canPush = true,
+  tokenExpiresAt = null,
   failWith,
+  pullRequestsFailWith,
 }: FakeOptions = {}): FakeGitHub {
   const commits = new Map<string, Commit>();
   const branches = new Map<string, string>();
@@ -62,7 +67,12 @@ export function createFakeGitHubClient({
   const client: GitHubClient = {
     getRepository() {
       guard();
-      return Promise.resolve({ fullName: "acme/blog", canPush });
+      return Promise.resolve({
+        fullName: "acme/blog",
+        url: "https://github.com/acme/blog",
+        canPush,
+        tokenExpiresAt,
+      });
     },
 
     getBranchHead(branch) {
@@ -117,6 +127,19 @@ export function createFakeGitHubClient({
       return Promise.resolve(
         pullRequests.find((pr) => pr.head === branch && pr.state === "open"),
       );
+    },
+
+    listOpenPullRequests() {
+      guard();
+      if (pullRequestsFailWith !== undefined) {
+        return Promise.reject(
+          new GitHubError(
+            pullRequestsFailWith,
+            `Fake GitHub error ${pullRequestsFailWith}`,
+          ),
+        );
+      }
+      return Promise.resolve(pullRequests.filter((pr) => pr.state === "open"));
     },
 
     getPullRequest(number) {

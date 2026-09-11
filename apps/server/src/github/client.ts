@@ -6,7 +6,7 @@
  * (docs/adr/0003-github-api-no-clone.md).
  */
 export interface GitHubClient {
-  /** Repository metadata and whether the token may push. */
+  /** Repository metadata, whether GitHub reports push access, and token expiry. */
   getRepository(): Promise<RepositoryInfo>;
   /** Commit SHA at the tip of `branch`, or undefined if the branch does not exist. */
   getBranchHead(branch: string): Promise<string | undefined>;
@@ -23,13 +23,20 @@ export interface GitHubClient {
   commit(input: CommitInput): Promise<string>;
   /** The open pull request whose head is `branch`, if any. */
   findOpenPullRequest(branch: string): Promise<PullRequest | undefined>;
+  /** Open pull requests, newest first (up to 100). */
+  listOpenPullRequests(): Promise<PullRequest[]>;
   getPullRequest(number: number): Promise<PullRequest | undefined>;
   createPullRequest(input: CreatePullRequestInput): Promise<PullRequest>;
 }
 
 export interface RepositoryInfo {
   readonly fullName: string;
+  /** Web URL of the repository. */
+  readonly url: string;
+  /** GitHub's `permissions.push` for the token's account on this repository. */
   readonly canPush: boolean;
+  /** ISO date when the token expires, if GitHub reports one. */
+  readonly tokenExpiresAt: string | null;
 }
 
 /** `content: null` deletes the file. */

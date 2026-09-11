@@ -174,6 +174,7 @@ health, login, and logout ([ADR-0009](adr/0009-minimal-authentication.md)).
 | `DELETE /api/session`           | public | Log out. Always succeeds.                       |
 | `GET /api/session`              | yes    | `{ "collaborator": { id, name } \| null }`.     |
 | `PUT /api/session/display-name` | yes    | Choose a display name with `{ "name" }`.        |
+| `GET /api/repository`           | yes    | Read-only GitHub checks and repository stats.   |
 
 Errors always have the shape `{ "error": { "code": "...", "message": "..." } }`.
 

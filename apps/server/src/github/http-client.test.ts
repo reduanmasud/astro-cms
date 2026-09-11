@@ -5,6 +5,7 @@ import { createHttpGitHubClient } from "./http-client.ts";
 interface Reply {
   status: number;
   body?: unknown;
+  headers?: Record<string, string>;
 }
 interface Call {
   method: string;
@@ -35,6 +36,7 @@ function mockGitHub(replies: Record<string, Reply>) {
         reply.body === undefined ? null : JSON.stringify(reply.body),
         {
           status: reply.status,
+          headers: reply.headers,
         },
       ),
     );
@@ -57,7 +59,11 @@ describe("HTTP GitHub client", () => {
     const { client, calls } = mockGitHub({
       [`GET ${REPO}`]: {
         status: 200,
-        body: { full_name: "acme/blog", permissions: { push: true } },
+        body: {
+          full_name: "acme/blog",
+          html_url: "https://github.com/acme/blog",
+          permissions: { push: true },
+        },
       },
     });
 
@@ -70,17 +76,43 @@ describe("HTTP GitHub client", () => {
   });
 
   describe("getRepository", () => {
-    it("reports whether the token can push", async () => {
+    it("reports the URL, push access, and token expiry", async () => {
       const { client } = mockGitHub({
         [`GET ${REPO}`]: {
           status: 200,
-          body: { full_name: "acme/blog", permissions: { push: false } },
+          body: {
+            full_name: "acme/blog",
+            html_url: "https://github.com/acme/blog",
+            permissions: { push: false },
+          },
+          headers: {
+            "github-authentication-token-expiration": "2026-12-31 00:00:00 UTC",
+          },
         },
       });
 
       await expect(client.getRepository()).resolves.toEqual({
         fullName: "acme/blog",
+        url: "https://github.com/acme/blog",
         canPush: false,
+        tokenExpiresAt: "2026-12-31T00:00:00.000Z",
+      });
+    });
+
+    it("reports no expiry when GitHub sends none", async () => {
+      const { client } = mockGitHub({
+        [`GET ${REPO}`]: {
+          status: 200,
+          body: {
+            full_name: "acme/blog",
+            html_url: "https://github.com/acme/blog",
+          },
+        },
+      });
+
+      await expect(client.getRepository()).resolves.toMatchObject({
+        canPush: false,
+        tokenExpiresAt: null,
       });
     });
 
@@ -330,6 +362,20 @@ describe("HTTP GitHub client", () => {
       await expect(
         client.findOpenPullRequest("cms/hello"),
       ).resolves.toBeUndefined();
+    });
+
+    it("lists open pull requests", async () => {
+      const { client } = mockGitHub({
+        [`GET ${REPO}/pulls?state=open&per_page=100`]: {
+          status: 200,
+          body: [pull, { ...pull, number: 8 }],
+        },
+      });
+
+      const pulls = await client.listOpenPullRequests();
+
+      expect(pulls.map((pr) => pr.number)).toEqual([7, 8]);
+      expect(pulls[0]).toEqual(expected);
     });
 
     it("reads a pull request by number and reports merges", async () => {

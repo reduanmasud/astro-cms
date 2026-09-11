@@ -24,6 +24,7 @@ async function main(): Promise<void> {
   const repository = createRepositoryService({
     github: createHttpGitHubClient(config.github),
     baseBranch: config.github.baseBranch,
+    fullName: `${config.github.owner}/${config.github.repository}`,
   });
   const access = await repository.verifyAccess();
   console.info(
@@ -36,6 +37,7 @@ async function main(): Promise<void> {
 
   const app = createApp({
     health: createHealthService({ db }),
+    repository,
     sessions: createSessionService({
       db,
       password: config.cmsPassword,

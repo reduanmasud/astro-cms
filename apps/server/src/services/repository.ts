@@ -1,20 +1,14 @@
 import {
-  GitHubError,
   type FileChange,
   type GitHubClient,
   type PullRequest,
 } from "../github/client.ts";
-import { isValidBranchName } from "../github/names.ts";
+import { CMS_BRANCH_PREFIX, isValidBranchName } from "../github/names.ts";
+import { explainAccessError, RepositoryError } from "./repository-errors.ts";
+import { collectStatus, type RepositoryStatus } from "./repository-status.ts";
 
-/** Every branch the CMS writes to starts with this (docs/adr/0004-one-branch-per-content-item.md). */
-export const CMS_BRANCH_PREFIX = "cms/";
-
-export class RepositoryError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "RepositoryError";
-  }
-}
+export { CMS_BRANCH_PREFIX, RepositoryError };
+export type { RepositoryCheck, RepositoryStatus } from "./repository-status.ts";
 
 export interface RepositoryAccess {
   readonly fullName: string;
@@ -53,11 +47,15 @@ export interface RepositoryService {
    */
   saveToBranch(input: SaveToBranchInput): Promise<SaveToBranchResult>;
   getPullRequest(number: number): Promise<PullRequest | undefined>;
+  /** Runs read-only checks and gathers stats. Failures become failed checks. */
+  getStatus(): Promise<RepositoryStatus>;
 }
 
 interface Deps {
   github: GitHubClient;
   baseBranch: string;
+  /** "owner/repository", shown in the status report when GitHub is unreachable. */
+  fullName?: string;
 }
 
 /**
@@ -68,6 +66,7 @@ interface Deps {
 export function createRepositoryService({
   github,
   baseBranch,
+  fullName = "",
 }: Deps): RepositoryService {
   async function getBaseHead(): Promise<string> {
     const head = await github.getBranchHead(baseBranch);
@@ -147,6 +146,10 @@ export function createRepositoryService({
     getPullRequest(number) {
       return github.getPullRequest(number);
     },
+
+    getStatus() {
+      return collectStatus(github, baseBranch, fullName);
+    },
   };
 }
 
@@ -176,27 +179,4 @@ function assertSafePath(path: string): void {
         (segment) => segment !== "" && segment !== "." && segment !== "..",
       );
   if (!safe) throw new RepositoryError(`Invalid repository path: "${path}".`);
-}
-
-function explainAccessError(error: unknown): Error {
-  if (!(error instanceof GitHubError))
-    return error instanceof Error ? error : new Error(String(error));
-  switch (error.status) {
-    case 401:
-      return new RepositoryError(
-        "GITHUB_TOKEN was rejected by GitHub (401). Check that it is valid and not expired.",
-      );
-    case 403:
-      return new RepositoryError(
-        `GITHUB_TOKEN is not allowed to access the repository (403): ${error.message}`,
-      );
-    case 404:
-      return new RepositoryError(
-        "Repository not found or not visible to GITHUB_TOKEN (404). Check GITHUB_OWNER, GITHUB_REPOSITORY, and the token's repository access.",
-      );
-    default:
-      return new RepositoryError(
-        `Could not reach the GitHub repository: ${error.message}`,
-      );
-  }
 }

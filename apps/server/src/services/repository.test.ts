@@ -202,6 +202,81 @@ describe("saveToBranch", () => {
   });
 });
 
+describe("getStatus", () => {
+  it("passes every check for a healthy Astro repository", async () => {
+    const { fake, repository } = setup({
+      tokenExpiresAt: "2026-12-31T00:00:00.000Z",
+    });
+    await repository.saveToBranch(save);
+
+    const status = await repository.getStatus();
+
+    expect(status).toMatchObject({
+      fullName: "acme/blog",
+      url: "https://github.com/acme/blog",
+      baseBranch: "main",
+      headSha: fake.headOf("main"),
+      tokenExpiresAt: "2026-12-31T00:00:00.000Z",
+      stats: {
+        files: 2,
+        contentFiles: 1,
+        openPullRequests: 1,
+        openCmsPullRequests: 1,
+      },
+    });
+    expect(status.checks.map((check) => [check.id, check.ok])).toEqual([
+      ["access", true],
+      ["push", true],
+      ["baseBranch", true],
+      ["contents", true],
+      ["astro", true],
+      ["pullRequests", true],
+    ]);
+  });
+
+  it("flags missing push access", async () => {
+    const { repository } = setup({ canPush: false });
+
+    const status = await repository.getStatus();
+
+    expect(status.checks.find((check) => check.id === "push")?.ok).toBe(false);
+  });
+
+  it("flags a repository without an Astro config", async () => {
+    const fake = createFakeGitHubClient({ files: { "README.md": "# Hi\n" } });
+    const repository = createRepositoryService({
+      github: fake.client,
+      baseBranch: "main",
+    });
+
+    const status = await repository.getStatus();
+
+    expect(status.checks.find((check) => check.id === "astro")?.ok).toBe(false);
+  });
+
+  it("flags pull requests that cannot be read", async () => {
+    const { repository } = setup({ pullRequestsFailWith: 403 });
+
+    const status = await repository.getStatus();
+    const check = status.checks.find((c) => c.id === "pullRequests");
+
+    expect(check?.ok).toBe(false);
+    expect(check?.detail).toMatch(/403/);
+    expect(status.stats.openPullRequests).toBeNull();
+  });
+
+  it("reports the access failure and skips the other checks", async () => {
+    const { repository } = setup({ failWith: 401 });
+
+    const status = await repository.getStatus();
+
+    expect(status.checks[0]).toMatchObject({ id: "access", ok: false });
+    expect(status.checks[0]?.detail).toMatch(/GITHUB_TOKEN was rejected/);
+    expect(status.checks.slice(1).every((check) => !check.ok)).toBe(true);
+    expect(status.headSha).toBeNull();
+  });
+});
+
 describe("getPullRequest", () => {
   it("reads a pull request by number", async () => {
     const { repository } = setup();

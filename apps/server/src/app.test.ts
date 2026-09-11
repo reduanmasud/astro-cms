@@ -6,7 +6,9 @@ import { createApp } from "./app.ts";
 import { openDatabase, type Db } from "./db/database.ts";
 import { createRateLimiter } from "./lib/rate-limiter.ts";
 import { createCollaboratorService } from "./services/collaborators.ts";
+import { createFakeGitHubClient } from "./github/fake.ts";
 import { createHealthService } from "./services/health.ts";
+import { createRepositoryService } from "./services/repository.ts";
 import { createSessionService } from "./services/sessions.ts";
 
 const PASSWORD = "correct-horse-battery";
@@ -25,6 +27,12 @@ function buildApp(
   const collaborators = createCollaboratorService({ db });
   return createApp({
     health: createHealthService({ db }),
+    repository: createRepositoryService({
+      github: createFakeGitHubClient({
+        files: { "astro.config.mjs": "export default {};\n" },
+      }).client,
+      baseBranch: "main",
+    }),
     sessions: createSessionService({ db, password: PASSWORD, collaborators }),
     loginLimiter: createRateLimiter({
       limit: options.loginLimit ?? 100,
@@ -327,6 +335,31 @@ describe("display name", () => {
     const response = await chooseName(app, await signIn(app), name);
 
     expect(response.status).toBe(400);
+  });
+});
+
+describe("GET /api/repository", () => {
+  it("returns repository checks and stats for a signed-in user", async () => {
+    const app = buildApp();
+    const cookie = await signIn(app, "Ada");
+
+    const response = await app.request("/api/repository", {
+      headers: { Cookie: cookie },
+    });
+    const status = (await response.json()) as {
+      fullName: string;
+      checks: { id: string; ok: boolean }[];
+    };
+
+    expect(response.status).toBe(200);
+    expect(status.fullName).toBe("acme/blog");
+    expect(status.checks.every((check) => check.ok)).toBe(true);
+  });
+
+  it("requires a session", async () => {
+    const response = await buildApp().request("/api/repository");
+
+    expect(response.status).toBe(401);
   });
 });
 

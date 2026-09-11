@@ -2,6 +2,7 @@ import { useEffect, useState, type JSX } from "react";
 import { getSession, logout, type Collaborator, type Session } from "./api.ts";
 import { DisplayNameForm } from "./DisplayNameForm.tsx";
 import { LoginForm } from "./LoginForm.tsx";
+import { RepositoryPanel } from "./RepositoryPanel.tsx";
 
 type State =
   | { status: "loading" }
@@ -78,7 +79,8 @@ function Shell({ collaborator, onLogout }: ShellProps): JSX.Element {
         </button>
       </header>
       <main className="content">
-        <p>Signed in. Content editing is not built yet.</p>
+        <RepositoryPanel />
+        <p className="hint">Content editing is not built yet.</p>
       </main>
     </div>
   );

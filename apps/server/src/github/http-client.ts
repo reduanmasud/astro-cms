@@ -62,6 +62,14 @@ export function createHttpGitHubClient({
     path: string,
     body?: unknown,
   ): Promise<unknown> {
+    return (await requestWithHeaders(method, path, body)).data;
+  }
+
+  async function requestWithHeaders(
+    method: string,
+    path: string,
+    body?: unknown,
+  ): Promise<{ data: unknown; headers: Headers }> {
     const response = await send(method, path, body);
     const data: unknown = await response.json().catch(() => undefined);
     if (!response.ok) {
@@ -72,7 +80,7 @@ export function createHttpGitHubClient({
         `GitHub ${method} ${path} failed (${response.status})${message ? `: ${message}` : ""}`,
       );
     }
-    return data;
+    return { data, headers: response.headers };
   }
 
   /** Like `request`, but a 404 becomes undefined. */
@@ -95,11 +103,16 @@ export function createHttpGitHubClient({
 
   return {
     async getRepository(): Promise<RepositoryInfo> {
-      const data = asJson(await request("GET", ""));
+      const { data: body, headers } = await requestWithHeaders("GET", "");
+      const data = asJson(body);
       const permissions = isJson(data.permissions) ? data.permissions : {};
       return {
         fullName: text(data, "full_name"),
+        url: text(data, "html_url"),
         canPush: permissions.push === true,
+        tokenExpiresAt: parseExpiry(
+          headers.get("github-authentication-token-expiration"),
+        ),
       };
     },
 
@@ -191,6 +204,12 @@ export function createHttpGitHubClient({
       return first === undefined ? undefined : toPullRequest(first);
     },
 
+    async listOpenPullRequests() {
+      const data = await request("GET", "/pulls?state=open&per_page=100");
+      if (!Array.isArray(data)) throw unexpected("pulls");
+      return data.map(toPullRequest);
+    },
+
     async getPullRequest(number) {
       const data = await requestOptional(`/pulls/${number}`);
       return data === undefined ? undefined : toPullRequest(data);
@@ -213,6 +232,13 @@ function toPullRequest(value: unknown): PullRequest {
     head: text(record(data, "head"), "ref"),
     base: text(record(data, "base"), "ref"),
   };
+}
+
+/** GitHub sends e.g. "2026-12-31 00:00:00 UTC"; returns ISO 8601, or null. */
+function parseExpiry(value: string | null): string | null {
+  if (value === null) return null;
+  const date = new Date(value.replace(" UTC", "Z").replace(" ", "T"));
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
 function encodePath(path: string): string {

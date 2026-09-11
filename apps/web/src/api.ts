@@ -69,6 +69,32 @@ export async function chooseDisplayName(name: string): Promise<Collaborator> {
   return collaborator;
 }
 
+export interface RepositoryCheck {
+  id: string;
+  label: string;
+  ok: boolean;
+  detail: string;
+}
+
+export interface RepositoryStatus {
+  fullName: string;
+  url: string;
+  baseBranch: string;
+  headSha: string | null;
+  tokenExpiresAt: string | null;
+  checks: RepositoryCheck[];
+  stats: {
+    files: number | null;
+    contentFiles: number | null;
+    openPullRequests: number | null;
+    openCmsPullRequests: number | null;
+  };
+}
+
+export function getRepositoryStatus(): Promise<RepositoryStatus> {
+  return request<RepositoryStatus>("/api/repository");
+}
+
 export function logout(): Promise<void> {
   return request<void>("/api/session", { method: "DELETE" });
 }

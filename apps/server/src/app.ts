@@ -7,10 +7,12 @@ import { apiError } from "./http/errors.ts";
 import type { RateLimiter } from "./lib/rate-limiter.ts";
 import { sessionRoutes } from "./routes/session.ts";
 import type { HealthService } from "./services/health.ts";
+import type { RepositoryService } from "./services/repository.ts";
 import type { SessionService } from "./services/sessions.ts";
 
 export interface AppDeps {
   health: HealthService;
+  repository: RepositoryService;
   sessions: SessionService;
   loginLimiter: RateLimiter;
   sessionSecret: string;
@@ -33,6 +35,7 @@ const PUBLIC_ROUTES = new Set([
  */
 export function createApp({
   health,
+  repository,
   sessions,
   loginLimiter,
   sessionSecret,
@@ -54,6 +57,7 @@ export function createApp({
   app.get("/api/health", (c) =>
     health.isHealthy() ? c.json({ ok: true }) : c.json({ ok: false }, 503),
   );
+  app.get("/api/repository", async (c) => c.json(await repository.getStatus()));
   app.route("/api/session", sessionRoutes({ sessions, loginLimiter, cookie }));
   app.all("/api/*", (c) => apiError(c, 404, "not_found", "No such API route."));
 

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ApiError,
   chooseDisplayName,
+  getRepositoryStatus,
   getSession,
   login,
   logout,
@@ -103,6 +104,16 @@ describe("chooseDisplayName", () => {
     const { path, init } = lastRequest(fetchMock);
     expect(path).toBe("/api/session/display-name");
     expect(init?.method).toBe("PUT");
+  });
+});
+
+describe("getRepositoryStatus", () => {
+  it("fetches the repository status", async () => {
+    const status = { fullName: "acme/blog", checks: [] };
+    const fetchMock = mockFetch(200, status);
+
+    await expect(getRepositoryStatus()).resolves.toEqual(status);
+    expect(lastRequest(fetchMock).path).toBe("/api/repository");
   });
 });
 
