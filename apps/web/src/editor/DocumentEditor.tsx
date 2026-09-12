@@ -8,9 +8,13 @@ import { useCallback, useEffect, useRef, useState, type JSX } from "react";
 import {
   ApiError,
   getDocument,
+  getDrift,
+  publishDocument,
+  resyncDocument,
   saveDocument,
   uploadMedia,
   type CmsDocument,
+  type DriftReport,
 } from "../api.ts";
 import { editorExtensions, toEditorContent } from "./extensions.ts";
 import { useCollaboration, type CollabStatus } from "./useCollaboration.ts";
@@ -45,6 +49,9 @@ export function DocumentEditor({
   const [error, setError] = useState<string>();
   const [frontmatter, setFrontmatter] = useState("");
   const [menu, setMenu] = useState<SlashMenuState | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [published, setPublished] = useState<string | null>(null);
+  const [conflict, setConflict] = useState<DriftReport | null>(null);
   // Keyed off state, never a ref: reading refs during render is not allowed.
   const collaboration = useCollaboration(documentId, loaded !== null);
   const seeded = useRef(false);
@@ -139,6 +146,35 @@ export function DocumentEditor({
     if (editor.isEmpty) editor.commands.setContent(toEditorContent(loaded.doc));
   }, [editor, loaded, collaboration.synced]);
 
+  async function publish(): Promise<void> {
+    setPublishing(true);
+    setError(undefined);
+    try {
+      // Save first, and wait for it: publishing a stale draft would publish
+      // something the person is not looking at. `save` resolves once SQLite
+      // has the current source; `autosave.saveNow` would not wait.
+      await save();
+      const result = await publishDocument(documentId);
+      setConflict(null);
+      setPublished(result.pullRequest.url);
+    } catch (caught) {
+      if (caught instanceof ApiError && caught.code === "drift") {
+        setConflict(await getDrift(documentId));
+      } else {
+        setError(
+          caught instanceof Error ? caught.message : "Publishing failed.",
+        );
+      }
+    } finally {
+      setPublishing(false);
+    }
+  }
+
+  async function resync(): Promise<void> {
+    await resyncDocument(documentId);
+    setConflict(null);
+  }
+
   function updateFrontmatter(value: string): void {
     setFrontmatter(value);
     frontmatterRef.current =
@@ -177,6 +213,13 @@ export function DocumentEditor({
         <button type="button" onClick={autosave.saveNow}>
           Save now
         </button>
+        <button
+          type="button"
+          onClick={() => void publish()}
+          disabled={publishing}
+        >
+          {publishing ? "Publishing…" : "Publish"}
+        </button>
       </header>
 
       <details className="frontmatter" open={frontmatter !== ""}>
@@ -189,6 +232,31 @@ export function DocumentEditor({
           aria-label="Frontmatter"
         />
       </details>
+
+      {published !== null && (
+        <p className="hint">
+          Published.{" "}
+          <a href={published} target="_blank" rel="noreferrer">
+            Open the pull request
+          </a>
+        </p>
+      )}
+      {conflict !== null && (
+        <section className="conflict" role="alert">
+          <h2>The base branch moved</h2>
+          <p>
+            The repository changed since this draft started, so publishing
+            stopped. Nothing was written to GitHub. Here is the file as it
+            stands on the base branch:
+          </p>
+          <pre>
+            {conflict.baseContent ?? "(the file is not on the base branch)"}
+          </pre>
+          <button type="button" onClick={() => void resync()}>
+            Re-sync and keep my draft
+          </button>
+        </section>
+      )}
 
       <Toolbar editor={editor} />
       <EditorContent editor={editor} className="editor" />

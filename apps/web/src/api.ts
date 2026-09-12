@@ -251,6 +251,52 @@ export function uploadMedia(
   return request("/api/media", { method: "POST", body });
 }
 
+// --- Publishing --------------------------------------------------------------
+
+export interface PublishedPullRequest {
+  number: number;
+  url: string;
+  state: "open" | "closed";
+  merged: boolean;
+  title: string;
+  head: string;
+  base: string;
+}
+
+export interface PublishResult {
+  pullRequest: PublishedPullRequest;
+  commitSha: string;
+  createdBranch: boolean;
+  createdPullRequest: boolean;
+  document: CmsDocument;
+}
+
+export interface DriftReport {
+  drifted: boolean;
+  baseCommitSha: string | null;
+  headSha: string;
+  /** The file as it stands on the base branch, or null if it is not there. */
+  baseContent: string | null;
+}
+
+/** Commits the draft to its CMS branch and opens or updates its pull request. */
+export function publishDocument(id: string): Promise<PublishResult> {
+  return request(`/api/documents/${encodeURIComponent(id)}/publish`, {
+    method: "POST",
+  });
+}
+
+export function getDrift(id: string): Promise<DriftReport> {
+  return request(`/api/documents/${encodeURIComponent(id)}/drift`);
+}
+
+/** Adopts the current base branch commit as the draft's baseline. */
+export function resyncDocument(id: string): Promise<{ baseCommitSha: string }> {
+  return request(`/api/documents/${encodeURIComponent(id)}/resync`, {
+    method: "POST",
+  });
+}
+
 // --- Live collaboration ------------------------------------------------------
 
 export interface CollabConnection {

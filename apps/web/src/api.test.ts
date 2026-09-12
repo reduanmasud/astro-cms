@@ -4,8 +4,11 @@ import {
   chooseDisplayName,
   getRepositoryStatus,
   getSession,
+  getDrift,
   login,
   logout,
+  publishDocument,
+  resyncDocument,
   uploadMedia,
 } from "./api.ts";
 
@@ -159,5 +162,60 @@ describe("uploadMedia", () => {
 
     expect(error).toBeInstanceOf(ApiError);
     expect(error).toMatchObject({ status: 415, code: "unsupported_type" });
+  });
+});
+
+describe("publishDocument", () => {
+  it("posts to the publish route", async () => {
+    const fetchMock = mockFetch(200, {
+      pullRequest: { number: 3, url: "https://github.com/acme/blog/pull/3" },
+      commitSha: "sha0002",
+      createdBranch: true,
+      createdPullRequest: true,
+    });
+
+    await expect(publishDocument("d1")).resolves.toMatchObject({
+      createdBranch: true,
+    });
+
+    const { path, init } = lastRequest(fetchMock);
+    expect(path).toBe("/api/documents/d1/publish");
+    expect(init?.method).toBe("POST");
+  });
+
+  it("surfaces drift as an ApiError carrying the conflict", async () => {
+    mockFetch(409, {
+      error: {
+        code: "drift",
+        message: "the base branch moved",
+        drift: { drifted: true, baseContent: "# Theirs\n" },
+      },
+    });
+
+    const error = await publishDocument("d1").catch(
+      (caught: unknown) => caught,
+    );
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({ status: 409, code: "drift" });
+  });
+});
+
+describe("getDrift and resyncDocument", () => {
+  it("reads and then clears drift", async () => {
+    const readMock = mockFetch(200, {
+      drifted: true,
+      baseCommitSha: "sha0001",
+      headSha: "sha0009",
+      baseContent: "# Theirs\n",
+    });
+    await expect(getDrift("d1")).resolves.toMatchObject({ drifted: true });
+    expect(lastRequest(readMock).path).toBe("/api/documents/d1/drift");
+
+    const resyncMock = mockFetch(200, { baseCommitSha: "sha0009" });
+    await expect(resyncDocument("d1")).resolves.toEqual({
+      baseCommitSha: "sha0009",
+    });
+    expect(lastRequest(resyncMock).init?.method).toBe("POST");
   });
 });
