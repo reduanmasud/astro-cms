@@ -23,3 +23,4 @@ history. Use [`template.md`](template.md) for new records.
 | [0015](0015-editor-model-and-serialization.md) | Editor document, serialization, and persistence are separate                | accepted | 2026-09-12 |
 | [0016](0016-collaboration-service.md)          | HocusPocus runs as its own service, reached over JWT and a signed webhook   | accepted | 2026-09-12 |
 | [0017](0017-media-storage.md)                  | Media in S3-compatible storage, content-addressed, metadata in SQLite       | accepted | 2026-09-12 |
+| [0018](0018-images-are-editable-nodes.md)      | Images are editable nodes, and pasting one uploads it                       | accepted | 2026-09-12 |

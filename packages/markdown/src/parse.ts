@@ -160,8 +160,20 @@ function inline(
       ]);
     case "break":
       return [{ type: "hardBreak" }];
+    case "image":
+      return [
+        {
+          type: "image",
+          attrs: {
+            src: node.url,
+            ...(node.alt == null ? {} : { alt: node.alt }),
+            ...(node.title == null ? {} : { title: node.title }),
+          },
+          ...(marks.length > 0 ? { marks: [...marks] } : {}),
+        },
+      ];
     default:
-      // images, footnote references, inline JSX/expressions, inline HTML: kept as-is.
+      // footnote references, inline JSX/expressions, inline HTML: kept as-is.
       return [protectedInline(raw(node, source))];
   }
 }

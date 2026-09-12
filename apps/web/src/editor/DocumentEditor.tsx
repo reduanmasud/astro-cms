@@ -9,6 +9,7 @@ import {
   ApiError,
   getDocument,
   saveDocument,
+  uploadMedia,
   type CmsDocument,
 } from "../api.ts";
 import { editorExtensions, toEditorContent } from "./extensions.ts";
@@ -115,7 +116,10 @@ export function DocumentEditor({
 
   const editor = useEditor(
     {
-      extensions: editorExtensions({ onStateChange: setMenu }, shared),
+      extensions: editorExtensions({ onStateChange: setMenu }, shared, {
+        upload: async (file) => (await uploadMedia(file)).media,
+        onError: setError,
+      }),
       // A room holds the text; otherwise the draft does.
       ...(shared ? {} : { content: toEditorContent(loaded?.doc ?? EMPTY_DOC) }),
       editable: loaded !== null,

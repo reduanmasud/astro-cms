@@ -218,6 +218,39 @@ export function deleteDocument(id: string): Promise<void> {
   });
 }
 
+// --- Media -------------------------------------------------------------------
+
+export interface MediaItem {
+  id: string;
+  objectKey: string;
+  filename: string;
+  contentType: string;
+  size: number;
+  sha256: string;
+  width: number | null;
+  height: number | null;
+  url: string;
+  referenceCount: number;
+  unusedSince: number | null;
+  uploadedBy: Collaborator | null;
+  uploadedAt: number;
+}
+
+/**
+ * Stores a file and returns where it now lives. `created` is false when the
+ * same bytes were already stored (docs/adr/0017-media-storage.md).
+ *
+ * The body is FormData on purpose: the browser sets the multipart boundary,
+ * which a Content-Type of ours would break.
+ */
+export function uploadMedia(
+  file: File,
+): Promise<{ media: MediaItem; created: boolean }> {
+  const body = new FormData();
+  body.append("file", file);
+  return request("/api/media", { method: "POST", body });
+}
+
 // --- Live collaboration ------------------------------------------------------
 
 export interface CollabConnection {

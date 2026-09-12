@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@tiptap/extension-table";
+import Image from "@tiptap/extension-image";
 import StarterKit from "@tiptap/starter-kit";
 import {
   MDX_BLOCK,
@@ -21,6 +22,11 @@ import {
 } from "@astro-cms/markdown";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import type * as Y from "yjs";
+import {
+  DEFAULT_IMAGE_UPLOAD,
+  ImageUpload,
+  type ImageUploadOptions,
+} from "./imageUpload.ts";
 import { SlashCommand, type SlashCommandOptions } from "./SlashCommand.ts";
 
 /** The Yjs field name; the CMS reads the same one from the webhook. */
@@ -74,7 +80,7 @@ export const MdxBlock = Node.create({
   },
 });
 
-/** Inline JSX, expressions, images, and other inline content kept verbatim. */
+/** Inline JSX, expressions, footnotes, and other inline content kept verbatim. */
 export const MdxInline = Node.create({
   name: MDX_INLINE,
   group: "inline",
@@ -115,6 +121,7 @@ export interface CollaborationOptions {
 export function editorExtensions(
   slash?: SlashCommandOptions,
   collaboration?: CollaborationOptions,
+  images?: ImageUploadOptions,
 ): Extensions {
   return [
     StarterKit.configure({
@@ -128,6 +135,9 @@ export function editorExtensions(
     TableRow,
     TableHeader,
     TableCell,
+    // Inline, because a Markdown image is phrasing content inside a paragraph.
+    Image.configure({ inline: true, allowBase64: false }),
+    ImageUpload.configure(images ?? DEFAULT_IMAGE_UPLOAD),
     MdxBlock,
     MdxInline,
     ...(slash ? [SlashCommand.configure(slash)] : []),

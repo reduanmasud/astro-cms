@@ -6,6 +6,7 @@ import {
   getSession,
   login,
   logout,
+  uploadMedia,
 } from "./api.ts";
 
 function mockFetch(status: number, body?: unknown) {
@@ -123,5 +124,40 @@ describe("logout", () => {
 
     await expect(logout()).resolves.toBeUndefined();
     expect(lastRequest(fetchMock).init?.method).toBe("DELETE");
+  });
+});
+
+describe("uploadMedia", () => {
+  const png = (): File =>
+    new File([new Uint8Array([1, 2, 3])], "shot.png", { type: "image/png" });
+
+  it("sends the file as multipart, letting the browser set the boundary", async () => {
+    const fetchMock = mockFetch(201, {
+      media: { id: "m1", url: "https://media.test/a.png" },
+      created: true,
+    });
+
+    await expect(uploadMedia(png())).resolves.toMatchObject({ created: true });
+
+    const { path, init } = lastRequest(fetchMock);
+    expect(path).toBe("/api/media");
+    expect(init?.method).toBe("POST");
+    expect(init?.body).toBeInstanceOf(FormData);
+    // A Content-Type of our own would break the multipart boundary.
+    expect(init?.headers).toBeUndefined();
+  });
+
+  it("surfaces the server's reason for refusing a file", async () => {
+    mockFetch(415, {
+      error: {
+        code: "unsupported_type",
+        message: "Only PNG, JPEG, GIF, WebP, and AVIF images are accepted.",
+      },
+    });
+
+    const error = await uploadMedia(png()).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({ status: 415, code: "unsupported_type" });
   });
 });

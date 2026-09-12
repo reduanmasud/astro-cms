@@ -258,12 +258,49 @@ describe("MDX", () => {
     expect(roundTrip(source)).toBe(source);
   });
 
-  it("keeps unsupported constructs such as images and footnotes", () => {
-    const image = "![alt](./hero.png)\n";
+  it("keeps unsupported constructs such as footnotes", () => {
     const footnote = "Text[^1]\n\n[^1]: The note\n";
 
-    expect(roundTrip(image)).toBe(image);
     expect(roundTrip(footnote)).toBe(footnote);
+  });
+
+  it.each([
+    ["on its own", "![alt](./hero.png)\n"],
+    ["among text", "Before ![alt](./a.png) after.\n"],
+    ["with a title", '![alt](./a.png "Title")\n'],
+    ["without alt text", "![](./a.png)\n"],
+    ["as a link", "[![alt](./a.png)](https://example.com)\n"],
+  ])("round-trips an image %s", (_label, source) => {
+    expect(roundTrip(source)).toBe(source);
+  });
+
+  it("parses an image into an editable node, not opaque text", () => {
+    const paragraph = blocks('![Hero shot](./hero.png "Title")\n')[0];
+
+    expect(paragraph).toMatchObject({
+      type: "paragraph",
+      content: [
+        {
+          type: "image",
+          attrs: { src: "./hero.png", alt: "Hero shot", title: "Title" },
+        },
+      ],
+    });
+  });
+
+  it("keeps the link mark on a linked image", () => {
+    const paragraph = blocks("[![alt](./a.png)](https://example.com)\n")[0];
+
+    expect(paragraph?.content?.[0]).toMatchObject({
+      type: "image",
+      marks: [{ type: "link", attrs: { href: "https://example.com" } }],
+    });
+  });
+
+  it("leaves MDX image components opaque", () => {
+    const source = '<Image src="./hero.png" alt="Hero" />\n';
+
+    expect(roundTrip(source, "mdx")).toBe(source);
   });
 
   it("never loses content: a second round trip is identical", () => {

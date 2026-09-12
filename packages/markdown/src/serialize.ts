@@ -172,6 +172,18 @@ function leaf(node: EditorNode, depth: number): PhrasingContent[] {
   if (node.type === MDX_INLINE)
     return [{ type: "html", value: sourceOf(node) }];
   if (node.type === "hardBreak") return [{ type: "break" }];
+  if (node.type === "image") {
+    const attr = (name: string): string | undefined =>
+      typeof node.attrs?.[name] === "string" ? node.attrs[name] : undefined;
+    return [
+      {
+        type: "image",
+        url: attr("src") ?? "",
+        alt: attr("alt") ?? null,
+        title: attr("title") ?? null,
+      },
+    ];
+  }
   if (node.type !== "text") return toInlines(node.content);
 
   const value = node.text ?? "";
