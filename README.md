@@ -178,6 +178,30 @@ still referenced. Nothing is deleted automatically yet; the collector in
 Storage credentials never reach the browser
 ([ADR-0017](docs/adr/0017-media-storage.md)).
 
+## Publishing
+
+Drafting never touches GitHub. Publishing is the only thing that does.
+
+Press **Publish** and the CMS commits the draft to `cms/<collection>/<slug>`
+and opens a pull request. Publishing the same draft again adds a commit to
+that same branch and pull request — never a second one. The CMS never writes
+your base branch and never merges anything; you review and merge on GitHub.
+
+If the base branch moved since the draft started, publishing stops before
+writing anything and shows you the file as it stands on the base branch, with
+a **Re-sync** button. Re-sync moves the draft's baseline only: it never edits
+your text, and nothing is merged automatically. This is deliberately strict —
+any commit to the base branch blocks publishing until you look
+([ADR-0019](docs/adr/0019-publishing-through-pull-requests.md)).
+
+Once the pull request merges, reopening the document moves it to
+**published**.
+
+> **Enable "automatically delete head branches"** on the repository settings.
+> A merged pull request otherwise leaves its branch behind, and the CMS
+> refuses to commit to a branch whose pull request is gone — committing there
+> would reopen merged history.
+
 ## Known limitations
 
 - The login rate limit (10 failed attempts per 15 minutes) is keyed by the TCP

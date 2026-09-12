@@ -181,23 +181,26 @@ health, login, and logout ([ADR-0009](adr/0009-minimal-authentication.md)).
 
 ### HTTP API
 
-| Route                                  | Auth       | Purpose                                              |
-| -------------------------------------- | ---------- | ---------------------------------------------------- |
-| `GET /api/health`                      | public     | `{ "ok": true }` when SQLite answers, else 503.      |
-| `POST /api/session`                    | public     | Log in with `{ "password" }`. Rate-limited.          |
-| `DELETE /api/session`                  | public     | Log out. Always succeeds.                            |
-| `GET /api/session`                     | yes        | `{ "collaborator": { id, name } \| null }`.          |
-| `PUT /api/session/display-name`        | yes        | Choose a display name with `{ "name" }`.             |
-| `GET /api/repository`                  | yes        | Read-only GitHub checks and repository stats.        |
-| `GET /api/collections`                 | yes        | Astro project info and its content collections.      |
-| `GET /api/collections/:collection`     | yes        | One collection with its entries.                     |
-| `GET /api/documents`                   | yes        | List or search drafts (`collection`, `status`, `q`). |
-| `POST /api/documents`                  | yes + name | Open a repository path as a draft.                   |
-| `GET /api/documents/:id`               | yes        | One draft with its source.                           |
-| `GET /api/documents/:id/collaboration` | yes + name | A short-lived room token for HocusPocus.             |
-| `POST /api/collab/webhook`             | signature  | HocusPocus callbacks: connect, create, change.       |
-| `PATCH /api/documents/:id`             | yes + name | Save source, slug, or status.                        |
-| `DELETE /api/documents/:id`            | yes + name | Delete a draft.                                      |
+| Route                                  | Auth       | Purpose                                                                        |
+| -------------------------------------- | ---------- | ------------------------------------------------------------------------------ |
+| `GET /api/health`                      | public     | `{ "ok": true }` when SQLite answers, else 503.                                |
+| `POST /api/session`                    | public     | Log in with `{ "password" }`. Rate-limited.                                    |
+| `DELETE /api/session`                  | public     | Log out. Always succeeds.                                                      |
+| `GET /api/session`                     | yes        | `{ "collaborator": { id, name } \| null }`.                                    |
+| `PUT /api/session/display-name`        | yes        | Choose a display name with `{ "name" }`.                                       |
+| `GET /api/repository`                  | yes        | Read-only GitHub checks and repository stats.                                  |
+| `GET /api/collections`                 | yes        | Astro project info and its content collections.                                |
+| `GET /api/collections/:collection`     | yes        | One collection with its entries.                                               |
+| `GET /api/documents`                   | yes        | List or search drafts (`collection`, `status`, `q`).                           |
+| `POST /api/documents`                  | yes + name | Open a repository path as a draft.                                             |
+| `GET /api/documents/:id`               | yes        | One draft with its source. `?refresh=true` asks GitHub about its pull request. |
+| `POST /api/documents/:id/publish`      | yes + name | Commit the draft to its CMS branch and open or update its pull request.        |
+| `GET /api/documents/:id/drift`         | yes        | Whether the base branch moved, with its version of the file.                   |
+| `POST /api/documents/:id/resync`       | yes + name | Adopt the current base commit as the draft's baseline.                         |
+| `GET /api/documents/:id/collaboration` | yes + name | A short-lived room token for HocusPocus.                                       |
+| `POST /api/collab/webhook`             | signature  | HocusPocus callbacks: connect, create, change.                                 |
+| `PATCH /api/documents/:id`             | yes + name | Save source, slug, or status.                                                  |
+| `DELETE /api/documents/:id`            | yes + name | Delete a draft.                                                                |
 
 Errors always have the shape `{ "error": { "code": "...", "message": "..." } }`.
 
