@@ -218,4 +218,46 @@ describe("document repository (SQLite)", () => {
       expect(documents.list({ search: "_", limit: 10, offset: 0 })).toEqual([]);
     });
   });
+
+  describe("publication", () => {
+    it("records a publish without bumping the revision", () => {
+      documents.insert(record());
+
+      documents.setPublication("doc-1", {
+        branch: "cms/blog/hello",
+        pullRequestNumber: 7,
+        pullRequestUrl: "https://github.com/acme/blog/pull/7",
+        publishedCommitSha: "sha0002",
+        publishedAt: 2000,
+        status: "in_review",
+      });
+
+      const document = documents.findById("doc-1");
+      // An open editor holds a revision; publishing must not invalidate it.
+      expect(document?.revision).toBe(1);
+      expect(document?.status).toBe("in_review");
+      expect(document?.publication).toEqual({
+        baseCommitSha: "abc123",
+        branch: "cms/blog/hello",
+        pullRequestNumber: 7,
+        pullRequestUrl: "https://github.com/acme/blog/pull/7",
+        publishedCommitSha: "sha0002",
+        publishedAt: 2000,
+      });
+    });
+
+    it("moves the baseline and the status on their own", () => {
+      documents.insert(record());
+
+      documents.setBaseCommit("doc-1", "sha0099");
+      documents.setStatus("doc-1", "published");
+
+      const document = documents.findById("doc-1");
+      expect(document?.publication.baseCommitSha).toBe("sha0099");
+      expect(document?.status).toBe("published");
+      // Neither touches the draft itself.
+      expect(document?.source).toBe("# Hello\n");
+      expect(document?.revision).toBe(1);
+    });
+  });
 });

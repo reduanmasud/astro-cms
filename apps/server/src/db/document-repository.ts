@@ -36,6 +36,16 @@ export interface DocumentQuery {
   readonly offset: number;
 }
 
+/** What one publish records. Written together, so they are one shape. */
+export interface PublicationChanges {
+  readonly branch: string;
+  readonly pullRequestNumber: number;
+  readonly pullRequestUrl: string;
+  readonly publishedCommitSha: string;
+  readonly publishedAt: number;
+  readonly status: DocumentStatus;
+}
+
 /** SQL access for documents. No business rules live here. */
 export interface DocumentRepository {
   insert(record: NewDocumentRecord): void;
@@ -49,6 +59,11 @@ export interface DocumentRepository {
     expectedRevision?: number,
   ): boolean;
   delete(id: string): boolean;
+  /** Records one publish. Does not bump `revision`: the draft did not change. */
+  setPublication(id: string, changes: PublicationChanges): void;
+  /** Moves the drift baseline (docs/adr/0005-drift-detection.md). */
+  setBaseCommit(id: string, sha: string): void;
+  setStatus(id: string, status: DocumentStatus): void;
 }
 
 interface DocumentRow {
@@ -184,6 +199,37 @@ export function createDocumentRepository(db: Db): DocumentRepository {
 
     delete(id) {
       return deleteById.run(id).changes > 0;
+    },
+
+    setPublication(id, changes) {
+      db.prepare(
+        `UPDATE documents
+            SET branch = ?, pull_request_number = ?, pull_request_url = ?,
+                published_commit_sha = ?, published_at = ?, status = ?
+          WHERE id = ?`,
+      ).run(
+        changes.branch,
+        changes.pullRequestNumber,
+        changes.pullRequestUrl,
+        changes.publishedCommitSha,
+        changes.publishedAt,
+        changes.status,
+        id,
+      );
+    },
+
+    setBaseCommit(id, sha) {
+      db.prepare("UPDATE documents SET base_commit_sha = ? WHERE id = ?").run(
+        sha,
+        id,
+      );
+    },
+
+    setStatus(id, status) {
+      db.prepare("UPDATE documents SET status = ? WHERE id = ?").run(
+        status,
+        id,
+      );
     },
   };
 }
