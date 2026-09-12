@@ -25,6 +25,8 @@ export interface FakeGitHub {
   parentOf(sha: string): string | null | undefined;
   pullRequestCount(): number;
   closeAllPullRequests(): void;
+  /** Marks one pull request merged, as GitHub does when it is merged. */
+  mergePullRequest(number: number): void;
 }
 
 /**
@@ -177,6 +179,13 @@ export function createFakeGitHubClient({
         pullRequests.length,
         ...pullRequests.map((pr) => ({ ...pr, state: "closed" as const })),
       );
+    },
+    mergePullRequest: (number: number) => {
+      const index = pullRequests.findIndex((pr) => pr.number === number);
+      const pr = pullRequests[index];
+      if (pr === undefined)
+        throw new Error(`No pull request ${String(number)}`);
+      pullRequests[index] = { ...pr, state: "closed", merged: true };
     },
   };
 }
