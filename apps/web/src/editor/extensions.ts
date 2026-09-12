@@ -4,6 +4,8 @@ import {
   type Content,
   type Extensions,
 } from "@tiptap/core";
+import Collaboration from "@tiptap/extension-collaboration";
+import CollaborationCaret from "@tiptap/extension-collaboration-caret";
 import {
   Table,
   TableCell,
@@ -17,7 +19,12 @@ import {
   type EditorDoc,
   type ProtectedBlockKind,
 } from "@astro-cms/markdown";
+import type { HocuspocusProvider } from "@hocuspocus/provider";
+import type * as Y from "yjs";
 import { SlashCommand, type SlashCommandOptions } from "./SlashCommand.ts";
+
+/** The Yjs field name; the CMS reads the same one from the webhook. */
+export const COLLAB_FIELD = "default";
 
 const BLOCK_LABELS: Record<ProtectedBlockKind, string> = {
   esm: "MDX import / export",
@@ -99,12 +106,23 @@ export const MdxInline = Node.create({
  * The editor's document model. Node names match what @astro-cms/markdown
  * produces, so a parsed document loads without conversion.
  */
-export function editorExtensions(slash?: SlashCommandOptions): Extensions {
+export interface CollaborationOptions {
+  readonly doc: Y.Doc;
+  readonly provider: HocuspocusProvider;
+  readonly user: { readonly name: string; readonly color: string };
+}
+
+export function editorExtensions(
+  slash?: SlashCommandOptions,
+  collaboration?: CollaborationOptions,
+): Extensions {
   return [
     StarterKit.configure({
       // Markdown-style input rules and keyboard shortcuts come from StarterKit.
       link: { openOnClick: false, autolink: true },
       codeBlock: { languageClassPrefix: "language-" },
+      // Yjs keeps the history when a room is open.
+      ...(collaboration ? { undoRedo: false as const } : {}),
     }),
     Table.configure({ resizable: true }),
     TableRow,
@@ -113,6 +131,18 @@ export function editorExtensions(slash?: SlashCommandOptions): Extensions {
     MdxBlock,
     MdxInline,
     ...(slash ? [SlashCommand.configure(slash)] : []),
+    ...(collaboration
+      ? [
+          Collaboration.configure({
+            document: collaboration.doc,
+            field: COLLAB_FIELD,
+          }),
+          CollaborationCaret.configure({
+            provider: collaboration.provider,
+            user: collaboration.user,
+          }),
+        ]
+      : []),
   ];
 }
 

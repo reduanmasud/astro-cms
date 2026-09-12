@@ -217,3 +217,29 @@ export function deleteDocument(id: string): Promise<void> {
     method: "DELETE",
   });
 }
+
+// --- Live collaboration ------------------------------------------------------
+
+export interface CollabConnection {
+  url: string;
+  room: string;
+  token: string;
+  expiresAt: number;
+}
+
+/**
+ * A short-lived token for this draft's collaboration room. Resolves to
+ * undefined when the server has no HocusPocus configured.
+ */
+export async function getCollabConnection(
+  documentId: string,
+): Promise<CollabConnection | undefined> {
+  try {
+    return await request<CollabConnection>(
+      `/api/documents/${encodeURIComponent(documentId)}/collaboration`,
+    );
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return undefined;
+    throw error;
+  }
+}

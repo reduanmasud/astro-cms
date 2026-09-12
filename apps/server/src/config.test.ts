@@ -25,6 +25,7 @@ describe("loadConfig", () => {
         repository: "blog",
         baseBranch: "main",
       },
+      collaboration: null,
     });
   });
 
@@ -122,6 +123,63 @@ describe("loadConfig", () => {
     expect(() => loadConfig({ ...required, [name]: value })).toThrow(
       new RegExp(`${name} `),
     );
+  });
+
+  describe("collaboration", () => {
+    const collab = {
+      HOCUSPOCUS_PUBLIC_URL: "wss://collab.example/ws",
+      HOCUSPOCUS_INTERNAL_URL: "ws://collab:1234",
+      HOCUSPOCUS_JWT_SECRET: "j".repeat(32),
+      HOCUSPOCUS_WEBHOOK_SECRET: "w".repeat(32),
+    };
+
+    it("is off when no HOCUSPOCUS_* value is set", () => {
+      expect(loadConfig(required).collaboration).toBeNull();
+    });
+
+    it("reads all four values", () => {
+      expect(loadConfig({ ...required, ...collab }).collaboration).toEqual({
+        publicUrl: "wss://collab.example/ws",
+        internalUrl: "ws://collab:1234",
+        jwtSecret: "j".repeat(32),
+        webhookSecret: "w".repeat(32),
+      });
+    });
+
+    it("requires the other three once one is set", () => {
+      expect(() =>
+        loadConfig({
+          ...required,
+          HOCUSPOCUS_PUBLIC_URL: collab.HOCUSPOCUS_PUBLIC_URL,
+        }),
+      ).toThrow(/HOCUSPOCUS_INTERNAL_URL is required/);
+    });
+
+    it.each(["HOCUSPOCUS_PUBLIC_URL", "HOCUSPOCUS_INTERNAL_URL"])(
+      "rejects a non-WebSocket %s",
+      (name) => {
+        expect(() =>
+          loadConfig({
+            ...required,
+            ...collab,
+            [name]: "https://collab.example",
+          }),
+        ).toThrow(new RegExp(`${name} must be a ws`));
+      },
+    );
+
+    it("rejects short secrets and reusing one secret for both", () => {
+      expect(() =>
+        loadConfig({ ...required, ...collab, HOCUSPOCUS_JWT_SECRET: "short" }),
+      ).toThrow(/HOCUSPOCUS_JWT_SECRET must be at least 32/);
+      expect(() =>
+        loadConfig({
+          ...required,
+          ...collab,
+          HOCUSPOCUS_WEBHOOK_SECRET: collab.HOCUSPOCUS_JWT_SECRET,
+        }),
+      ).toThrow(/must be different/);
+    });
   });
 
   it("reports every problem at once", () => {

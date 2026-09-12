@@ -6,10 +6,12 @@ import { GitHubError } from "./github/client.ts";
 import { authenticate, type AuthEnv } from "./http/authenticate.ts";
 import { apiError } from "./http/errors.ts";
 import type { RateLimiter } from "./lib/rate-limiter.ts";
+import { collabRoutes } from "./routes/collab.ts";
 import { collectionRoutes } from "./routes/collections.ts";
 import { documentErrorResponse, documentRoutes } from "./routes/documents.ts";
 import { sessionRoutes } from "./routes/session.ts";
 import type { AstroProjectService } from "./services/astro-project.ts";
+import type { CollabService } from "./services/collab.ts";
 import { DocumentError, type DocumentService } from "./services/documents.ts";
 import type { DraftOpener } from "./services/draft-opener.ts";
 import type { HealthService } from "./services/health.ts";
@@ -22,6 +24,7 @@ export interface AppDeps {
   project: AstroProjectService;
   documents: DocumentService;
   drafts: DraftOpener;
+  collab: CollabService;
   sessions: SessionService;
   loginLimiter: RateLimiter;
   sessionSecret: string;
@@ -36,6 +39,8 @@ const PUBLIC_ROUTES = new Set([
   "GET /api/health",
   "POST /api/session",
   "DELETE /api/session",
+  // HocusPocus calls this server-to-server; every request is HMAC-signed.
+  "POST /api/collab/webhook",
 ]);
 
 /**
@@ -48,6 +53,7 @@ export function createApp({
   project,
   documents,
   drafts,
+  collab,
   sessions,
   loginLimiter,
   sessionSecret,
@@ -70,8 +76,9 @@ export function createApp({
     health.isHealthy() ? c.json({ ok: true }) : c.json({ ok: false }, 503),
   );
   app.get("/api/repository", async (c) => c.json(await repository.getStatus()));
+  app.route("/api/collab", collabRoutes(collab));
   app.route("/api/collections", collectionRoutes(project));
-  app.route("/api/documents", documentRoutes({ documents, drafts }));
+  app.route("/api/documents", documentRoutes({ documents, drafts, collab }));
   app.route("/api/session", sessionRoutes({ sessions, loginLimiter, cookie }));
   app.all("/api/*", (c) => apiError(c, 404, "not_found", "No such API route."));
 

@@ -31,20 +31,22 @@ flowchart LR
   Browser["Browser<br/>React + Tiptap"]
   MCPClient["MCP client"]
 
-  subgraph Node["Single Node.js process"]
+  subgraph Node["CMS process"]
     HTTP["Hono HTTP routes"]
-    WS["HocusPocus WebSocket"]
     MCP["MCP endpoint"]
     Services["Application services"]
   end
+
+  WS["HocusPocus server<br/>(separate service)"]
 
   SQLite[("SQLite<br/>unpublished state")]
   GitHub[("GitHub repo<br/>published content")]
   S3[("S3-compatible storage<br/>media binaries")]
 
   Browser -- "HTTPS + session cookie" --> HTTP
-  Browser -- "WebSocket + session cookie" --> WS
+  Browser -- "WebSocket + JWT" --> WS
   MCPClient -- "HTTPS + MCP_TOKEN" --> MCP
+  WS -- "signed webhook" --> HTTP
   HTTP --> Services
   WS --> Services
   MCP --> Services
@@ -53,8 +55,10 @@ flowchart LR
   Services -- "AWS S3 SDK" --> S3
 ```
 
-Everything runs in one Node.js process ([ADR-0001](adr/0001-single-node-process.md)).
-There is no queue, cache server, or second service.
+The CMS is one Node.js process ([ADR-0001](adr/0001-single-node-process.md)).
+Live editing runs on a separate HocusPocus server
+([ADR-0016](adr/0016-collaboration-service.md)); there is still no queue or
+cache server.
 
 ## Layers
 
@@ -177,23 +181,45 @@ health, login, and logout ([ADR-0009](adr/0009-minimal-authentication.md)).
 
 ### HTTP API
 
-| Route                              | Auth       | Purpose                                              |
-| ---------------------------------- | ---------- | ---------------------------------------------------- |
-| `GET /api/health`                  | public     | `{ "ok": true }` when SQLite answers, else 503.      |
-| `POST /api/session`                | public     | Log in with `{ "password" }`. Rate-limited.          |
-| `DELETE /api/session`              | public     | Log out. Always succeeds.                            |
-| `GET /api/session`                 | yes        | `{ "collaborator": { id, name } \| null }`.          |
-| `PUT /api/session/display-name`    | yes        | Choose a display name with `{ "name" }`.             |
-| `GET /api/repository`              | yes        | Read-only GitHub checks and repository stats.        |
-| `GET /api/collections`             | yes        | Astro project info and its content collections.      |
-| `GET /api/collections/:collection` | yes        | One collection with its entries.                     |
-| `GET /api/documents`               | yes        | List or search drafts (`collection`, `status`, `q`). |
-| `POST /api/documents`              | yes + name | Open a repository path as a draft.                   |
-| `GET /api/documents/:id`           | yes        | One draft with its source.                           |
-| `PATCH /api/documents/:id`         | yes + name | Save source, slug, or status.                        |
-| `DELETE /api/documents/:id`        | yes + name | Delete a draft.                                      |
+| Route                                  | Auth       | Purpose                                              |
+| -------------------------------------- | ---------- | ---------------------------------------------------- |
+| `GET /api/health`                      | public     | `{ "ok": true }` when SQLite answers, else 503.      |
+| `POST /api/session`                    | public     | Log in with `{ "password" }`. Rate-limited.          |
+| `DELETE /api/session`                  | public     | Log out. Always succeeds.                            |
+| `GET /api/session`                     | yes        | `{ "collaborator": { id, name } \| null }`.          |
+| `PUT /api/session/display-name`        | yes        | Choose a display name with `{ "name" }`.             |
+| `GET /api/repository`                  | yes        | Read-only GitHub checks and repository stats.        |
+| `GET /api/collections`                 | yes        | Astro project info and its content collections.      |
+| `GET /api/collections/:collection`     | yes        | One collection with its entries.                     |
+| `GET /api/documents`                   | yes        | List or search drafts (`collection`, `status`, `q`). |
+| `POST /api/documents`                  | yes + name | Open a repository path as a draft.                   |
+| `GET /api/documents/:id`               | yes        | One draft with its source.                           |
+| `GET /api/documents/:id/collaboration` | yes + name | A short-lived room token for HocusPocus.             |
+| `POST /api/collab/webhook`             | signature  | HocusPocus callbacks: connect, create, change.       |
+| `PATCH /api/documents/:id`             | yes + name | Save source, slug, or status.                        |
+| `DELETE /api/documents/:id`            | yes + name | Delete a draft.                                      |
 
 Errors always have the shape `{ "error": { "code": "...", "message": "..." } }`.
+
+### Live collaboration
+
+The browser asks the CMS for a room token, then connects to
+`HOCUSPOCUS_PUBLIC_URL`; the server and MCP use `HOCUSPOCUS_INTERNAL_URL`.
+HocusPocus verifies the JWT, refuses a token whose room is not the document
+being opened, and calls back to `POST /api/collab/webhook`, signed with
+`HOCUSPOCUS_WEBHOOK_SECRET`:
+
+- `create`: the CMS returns nothing; the first client seeds the room from the
+  draft it loaded.
+- `change`: debounced, the CMS writes the document back to SQLite as
+  Markdown, credited to the collaborator in the connection context.
+
+The `connect` event is not part of the contract: HocusPocus refuses a
+connection whose connect webhook fails, which would stop editing during a CMS
+restart.
+
+Collaboration is optional. With no `HOCUSPOCUS_*` settings the editor saves
+directly over the API instead ([ADR-0016](adr/0016-collaboration-service.md)).
 
 ## Persistence
 
@@ -222,6 +248,7 @@ apps/
     src/test-support/     shared test harness
   web/                    @astro-cms/web: React + Vite frontend
     src/editor/           Tiptap editor, slash menu, autosave
+  collab/                 @astro-cms/collab: development HocusPocus server
 packages/
   markdown/               @astro-cms/markdown: Markdown/MDX <-> editor document
 tooling/

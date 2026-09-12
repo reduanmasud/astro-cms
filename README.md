@@ -11,8 +11,8 @@ A small, self-hosted CMS for **one Astro project in one GitHub repository**.
 - Auth is one shared password plus a display name. No accounts, teams, or OAuth.
 
 > **Status: early.** Login, GitHub repository access, Astro collection
-> discovery, SQLite drafts, and a Tiptap editor with autosave exist.
-> Publishing to GitHub, live collaboration, media, and MCP are not built yet.
+> discovery, SQLite drafts, a Tiptap editor, and live collaboration exist.
+> Publishing to GitHub, media, and MCP are not built yet.
 
 ## Documentation
 
@@ -65,7 +65,8 @@ stops with an explanation if something is wrong.
 docker compose up --build
 ```
 
-Open <http://localhost:5173>. Both containers reload when you edit files on
+Open <http://localhost:5173>. Compose also starts a HocusPocus server on
+port 1234 for live editing. The containers reload when you edit files on
 the host. The API is also reachable at <http://localhost:3000/api/health>.
 SQLite data lives in the `cms-data` volume; `docker compose down -v` deletes it.
 
@@ -107,6 +108,7 @@ Run a script in one package with `pnpm --filter @astro-cms/server test`.
 
 ```
 apps/server/            Hono API + SQLite (@astro-cms/server)
+apps/collab/            development HocusPocus server (@astro-cms/collab)
 apps/web/               React + Vite frontend and editor (@astro-cms/web)
 packages/markdown/      Markdown/MDX <-> editor document (@astro-cms/markdown)
 tooling/eslint-config/  shared ESLint config (@astro-cms/eslint-config)
@@ -130,6 +132,24 @@ See [docs/architecture.md](docs/architecture.md#repository-layout) for more.
   enforces both.
 - Put tests next to the code (`*.test.ts`) and run `pnpm check` before
   opening a PR.
+
+## Live collaboration
+
+Collaboration is optional. Set all four values to switch it on, or none to
+have the editor save directly over the API:
+
+| Variable                    | Used by     | Purpose                                    |
+| --------------------------- | ----------- | ------------------------------------------ |
+| `HOCUSPOCUS_PUBLIC_URL`     | browser     | WebSocket URL clients connect to           |
+| `HOCUSPOCUS_INTERNAL_URL`   | server, MCP | the same server from inside the network    |
+| `HOCUSPOCUS_JWT_SECRET`     | both        | signs and verifies short-lived room tokens |
+| `HOCUSPOCUS_WEBHOOK_SECRET` | both        | signs the webhook HocusPocus sends back    |
+
+`docker compose up` runs one for development. To use your own server, it must
+verify the CMS's JWT (HS256, the room is the `aud` claim) and run the standard
+webhook extension against `POST /api/collab/webhook` with the `create` and
+`change` events. `apps/collab/src/index.ts` is that setup in about
+fifty lines. See [ADR-0016](docs/adr/0016-collaboration-service.md).
 
 ## Known limitations
 

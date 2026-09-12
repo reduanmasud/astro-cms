@@ -21,3 +21,4 @@ history. Use [`template.md`](template.md) for new records.
 | [0013](0013-draft-storage.md)                  | Drafts are rows in SQLite, behind a repository and a service                | accepted | 2026-09-12 |
 | [0014](0014-static-content-config-parsing.md)  | Parse content.config.ts with @babel/parser, never execute it                | accepted | 2026-09-12 |
 | [0015](0015-editor-model-and-serialization.md) | Editor document, serialization, and persistence are separate                | accepted | 2026-09-12 |
+| [0016](0016-collaboration-service.md)          | HocusPocus runs as its own service, reached over JWT and a signed webhook   | accepted | 2026-09-12 |

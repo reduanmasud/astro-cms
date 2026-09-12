@@ -8,6 +8,7 @@ import {
   type DocumentErrorCode,
   type DocumentService,
 } from "../services/documents.ts";
+import type { CollabService } from "../services/collab.ts";
 import type { DraftOpener } from "../services/draft-opener.ts";
 import { MAX_SOURCE_BYTES } from "../services/documents.ts";
 
@@ -16,10 +17,15 @@ const BODY_LIMIT_BYTES = 2 * MAX_SOURCE_BYTES;
 interface Deps {
   documents: DocumentService;
   drafts: DraftOpener;
+  collab: CollabService;
 }
 
 /** `/api/documents`: drafts in SQLite. Nothing here writes to GitHub. */
-export function documentRoutes({ documents, drafts }: Deps): Hono<AuthEnv> {
+export function documentRoutes({
+  documents,
+  drafts,
+  collab,
+}: Deps): Hono<AuthEnv> {
   const routes = new Hono<AuthEnv>();
   const withName = requireCollaborator();
 
@@ -72,6 +78,34 @@ export function documentRoutes({ documents, drafts }: Deps): Hono<AuthEnv> {
   routes.get("/:id", (c) =>
     c.json({ document: documents.get(c.req.param("id")) }),
   );
+
+  // A short-lived token for the HocusPocus room of this draft.
+  routes.get("/:id/collaboration", withName, async (c) => {
+    if (!collab.isEnabled()) {
+      return apiError(
+        c,
+        404,
+        "collaboration_disabled",
+        "Collaboration is not configured.",
+      );
+    }
+    // `withName` guarantees this, but the type cannot know it.
+    const collaborator = c.var.session.collaborator;
+    if (collaborator === null) {
+      return apiError(
+        c,
+        403,
+        "display_name_required",
+        "Choose a display name first.",
+      );
+    }
+
+    const connection = await collab.issueConnection(
+      c.req.param("id"),
+      collaborator,
+    );
+    return c.json(connection);
+  });
 
   routes.patch("/:id", withName, async (c) => {
     const body = await readJson(c);

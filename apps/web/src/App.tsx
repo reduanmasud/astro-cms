@@ -97,6 +97,7 @@ function Shell({
       {view.name === "edit" ? (
         <DocumentEditor
           documentId={view.documentId}
+          collaboratorName={collaborator.name}
           onClose={() => onView({ name: "browse" })}
         />
       ) : (

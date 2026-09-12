@@ -12,17 +12,26 @@
     "github": "node --env-file-if-exists=../../.env scripts/github.ts"
   },
   "dependencies": {
+    "@astro-cms/markdown": "workspace:*",
     "@babel/parser": "catalog:",
     "@hono/node-server": "catalog:",
     "better-sqlite3": "catalog:",
-    "hono": "catalog:"
+    "hono": "catalog:",
+    "jose": "catalog:"
   },
   "devDependencies": {
+    "@astro-cms/collab": "workspace:*",
     "@babel/types": "catalog:",
+    "@hocuspocus/extension-webhook": "catalog:",
+    "@hocuspocus/provider": "catalog:",
+    "@hocuspocus/server": "catalog:",
     "@types/better-sqlite3": "catalog:",
     "@types/node": "catalog:",
+    "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "ws": "^8.21.3",
+    "yjs": "catalog:"
   }
 }

@@ -8,6 +8,7 @@ import { createDocumentRepository } from "./db/document-repository.ts";
 import { createHttpGitHubClient } from "./github/http-client.ts";
 import { createRateLimiter } from "./lib/rate-limiter.ts";
 import { createAstroProjectService } from "./services/astro-project.ts";
+import { createCollabService } from "./services/collab.ts";
 import { createCollaboratorService } from "./services/collaborators.ts";
 import { createDocumentService } from "./services/documents.ts";
 import { createDraftOpener } from "./services/draft-opener.ts";
@@ -49,6 +50,10 @@ async function main(): Promise<void> {
     project,
     documents,
     drafts: createDraftOpener({ documents, repository, project }),
+    collab: createCollabService({
+      config: config.collaboration,
+      documents,
+    }),
     sessions: createSessionService({
       db,
       password: config.cmsPassword,

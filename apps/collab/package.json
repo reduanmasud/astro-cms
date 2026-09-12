@@ -1,0 +1,23 @@
+{
+  "name": "@astro-cms/collab",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Development HocusPocus server. Mirrors what a production HocusPocus deployment must do.",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "scripts": {
+    "start": "node src/main.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@hocuspocus/extension-webhook": "catalog:",
+    "@hocuspocus/server": "catalog:",
+    "jose": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

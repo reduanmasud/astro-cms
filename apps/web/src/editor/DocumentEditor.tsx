@@ -12,6 +12,7 @@ import {
   type CmsDocument,
 } from "../api.ts";
 import { editorExtensions, toEditorContent } from "./extensions.ts";
+import { useCollaboration, type CollabStatus } from "./useCollaboration.ts";
 import { SlashMenu } from "./SlashMenu.tsx";
 import type { SlashMenuState } from "./SlashCommand.ts";
 import { Toolbar } from "./Toolbar.tsx";
@@ -19,6 +20,8 @@ import { useAutosave } from "./useAutosave.ts";
 
 export interface DocumentEditorProps {
   documentId: string;
+  /** Shown on this user's caret to other collaborators. */
+  collaboratorName: string;
   onClose: () => void;
 }
 
@@ -34,12 +37,16 @@ interface Loaded {
  */
 export function DocumentEditor({
   documentId,
+  collaboratorName,
   onClose,
 }: DocumentEditorProps): JSX.Element {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [error, setError] = useState<string>();
   const [frontmatter, setFrontmatter] = useState("");
   const [menu, setMenu] = useState<SlashMenuState | null>(null);
+  // Keyed off state, never a ref: reading refs during render is not allowed.
+  const collaboration = useCollaboration(documentId, loaded !== null);
+  const seeded = useRef(false);
 
   const revision = useRef(0);
   const saved = useRef("");
@@ -95,18 +102,38 @@ export function DocumentEditor({
 
   const autosave = useAutosave(save);
 
+  const live =
+    collaboration.status === "connected" || collaboration.status === "offline";
+  const shared =
+    collaboration.doc && collaboration.provider
+      ? {
+          doc: collaboration.doc,
+          provider: collaboration.provider,
+          user: { name: collaboratorName, color: colorFor(collaboratorName) },
+        }
+      : undefined;
+
   const editor = useEditor(
     {
-      extensions: editorExtensions({ onStateChange: setMenu }),
-      content: toEditorContent(loaded?.doc ?? { type: "doc", content: [] }),
+      extensions: editorExtensions({ onStateChange: setMenu }, shared),
+      // A room holds the text; otherwise the draft does.
+      ...(shared ? {} : { content: toEditorContent(loaded?.doc ?? EMPTY_DOC) }),
       editable: loaded !== null,
       onUpdate: ({ editor: instance }) => {
         currentDoc.current = instance.getJSON() as EditorDoc;
-        autosave.schedule();
+        // With a room open, HocusPocus saves through the webhook instead.
+        if (!live) autosave.schedule();
       },
     },
-    [loaded],
+    [loaded, shared?.provider],
   );
+
+  // The first client fills an empty room from the draft (ADR-0016).
+  useEffect(() => {
+    if (!editor || !loaded || !collaboration.synced || seeded.current) return;
+    seeded.current = true;
+    if (editor.isEmpty) editor.commands.setContent(toEditorContent(loaded.doc));
+  }, [editor, loaded, collaboration.synced]);
 
   function updateFrontmatter(value: string): void {
     setFrontmatter(value);
@@ -141,6 +168,7 @@ export function DocumentEditor({
           </span>
         </div>
         <span className="spacer" />
+        <CollabIndicator status={collaboration.status} />
         <SaveIndicator autosave={autosave} />
         <button type="button" onClick={autosave.saveNow}>
           Save now
@@ -187,6 +215,35 @@ function SaveIndicator({
     <span
       className={status === "error" ? "save-status fail" : "save-status"}
       role="status"
+    >
+      {text}
+    </span>
+  );
+}
+
+const EMPTY_DOC: EditorDoc = { type: "doc", content: [] };
+const CARET_COLORS = ["#2e7d32", "#1565c0", "#ad1457", "#ef6c00", "#6a1b9a"];
+
+/** A stable colour per name, so a collaborator keeps the same caret colour. */
+function colorFor(name: string): string {
+  const sum = [...name].reduce((total, char) => total + char.charCodeAt(0), 0);
+  return CARET_COLORS[sum % CARET_COLORS.length] ?? CARET_COLORS[0]!;
+}
+
+function CollabIndicator({
+  status,
+}: {
+  status: CollabStatus;
+}): JSX.Element | null {
+  if (status === "disabled" || status === "checking") return null;
+  const text = {
+    connecting: "Connecting…",
+    connected: "Live",
+    offline: "Reconnecting…",
+  }[status];
+  return (
+    <span
+      className={status === "connected" ? "live-status" : "live-status pending"}
     >
       {text}
     </span>

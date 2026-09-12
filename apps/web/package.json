@@ -13,14 +13,19 @@
   },
   "dependencies": {
     "@astro-cms/markdown": "workspace:*",
+    "@hocuspocus/provider": "catalog:",
     "@tiptap/core": "catalog:",
+    "@tiptap/extension-collaboration": "catalog:",
+    "@tiptap/extension-collaboration-caret": "catalog:",
     "@tiptap/extension-table": "catalog:",
     "@tiptap/pm": "catalog:",
     "@tiptap/react": "catalog:",
     "@tiptap/starter-kit": "catalog:",
     "@tiptap/suggestion": "catalog:",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "y-prosemirror": "catalog:",
+    "yjs": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",

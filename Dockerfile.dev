@@ -10,7 +10,9 @@ WORKDIR /app
 
 # Manifests first so the install layer is cached until dependencies change.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/collab/package.json apps/collab/
 COPY apps/server/package.json apps/server/
 COPY apps/web/package.json apps/web/
+COPY packages/markdown/package.json packages/markdown/
 COPY tooling/eslint-config/package.json tooling/eslint-config/
 RUN pnpm install --frozen-lockfile

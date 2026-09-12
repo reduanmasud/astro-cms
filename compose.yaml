@@ -13,6 +13,7 @@ x-dev: &dev
     - .:/app
     # Keep the container's Linux node_modules instead of the host's.
     - /app/node_modules
+    - /app/apps/collab/node_modules
     - /app/apps/server/node_modules
     - /app/apps/web/node_modules
     - /app/tooling/eslint-config/node_modules
@@ -25,11 +26,16 @@ services:
     environment:
       PORT: "3000"
       DATA_DIR: /data
+      HOCUSPOCUS_PUBLIC_URL: ${HOCUSPOCUS_PUBLIC_URL:-ws://localhost:1234}
+      HOCUSPOCUS_INTERNAL_URL: ${HOCUSPOCUS_INTERNAL_URL:-ws://hocuspocus:1234}
+      HOCUSPOCUS_JWT_SECRET: ${HOCUSPOCUS_JWT_SECRET:-dev-jwt-secret-change-me-0123456789}
+      HOCUSPOCUS_WEBHOOK_SECRET: ${HOCUSPOCUS_WEBHOOK_SECRET:-dev-webhook-secret-change-me-01234}
     ports:
       - "3000:3000"
     volumes:
       - .:/app
       - /app/node_modules
+      - /app/apps/collab/node_modules
       - /app/apps/server/node_modules
       - /app/apps/web/node_modules
       - /app/tooling/eslint-config/node_modules
@@ -44,6 +50,27 @@ services:
       timeout: 3s
       retries: 10
 
+  hocuspocus:
+    <<: *dev
+    command: pnpm --filter @astro-cms/collab start
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/collab/node_modules
+      - /app/apps/server/node_modules
+      - /app/apps/web/node_modules
+      - /app/tooling/eslint-config/node_modules
+    environment:
+      PORT: "1234"
+      CMS_WEBHOOK_URL: http://server:3000/api/collab/webhook
+      HOCUSPOCUS_JWT_SECRET: ${HOCUSPOCUS_JWT_SECRET:-dev-jwt-secret-change-me-0123456789}
+      HOCUSPOCUS_WEBHOOK_SECRET: ${HOCUSPOCUS_WEBHOOK_SECRET:-dev-webhook-secret-change-me-01234}
+    ports:
+      - "1234:1234"
+    depends_on:
+      server:
+        condition: service_healthy
+
   web:
     <<: *dev
     command: pnpm --filter @astro-cms/web dev --host 0.0.0.0
@@ -54,6 +81,8 @@ services:
     depends_on:
       server:
         condition: service_healthy
+      hocuspocus:
+        condition: service_started
 
 volumes:
   cms-data:

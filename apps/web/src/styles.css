@@ -394,3 +394,40 @@ code {
 .slash-menu button.selected {
   background: color-mix(in srgb, currentColor 12%, transparent);
 }
+
+/* --- live collaboration --- */
+
+.live-status {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #2e7d32;
+}
+
+.live-status.pending {
+  color: #ef6c00;
+}
+
+/* Other people's carets, from CollaborationCaret. */
+.collaboration-carets__caret {
+  position: relative;
+  border-left: 1px solid currentColor;
+  border-right: 1px solid currentColor;
+  margin-left: -1px;
+  margin-right: -1px;
+  word-break: normal;
+  pointer-events: none;
+}
+
+.collaboration-carets__label {
+  position: absolute;
+  top: -1.4em;
+  left: -1px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.15rem 0.3rem;
+  border-radius: 0.25rem 0.25rem 0.25rem 0;
+  white-space: nowrap;
+  color: white;
+  user-select: none;
+}

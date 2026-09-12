@@ -11,6 +11,21 @@ export interface GitHubConfig {
   readonly baseBranch: string;
 }
 
+/**
+ * A HocusPocus server the CMS points clients at. Collaboration is off unless
+ * all four values are set (docs/adr/0016-collaboration-service.md).
+ */
+export interface CollaborationConfig {
+  /** WebSocket URL the browser connects to. */
+  readonly publicUrl: string;
+  /** WebSocket URL the server and MCP connect to, inside the private network. */
+  readonly internalUrl: string;
+  /** Signs the short-lived tokens HocusPocus verifies. */
+  readonly jwtSecret: string;
+  /** Verifies webhook requests coming back from HocusPocus. */
+  readonly webhookSecret: string;
+}
+
 export interface Config {
   readonly port: number;
   readonly dataDir: string;
@@ -18,6 +33,7 @@ export interface Config {
   readonly sessionSecret: string;
   readonly cookieSecure: boolean;
   readonly github: GitHubConfig;
+  readonly collaboration: CollaborationConfig | null;
 }
 
 type Env = Readonly<Record<string, string | undefined>>;
@@ -70,6 +86,8 @@ export function loadConfig(env: Env): Config {
     problems.push('COOKIE_SECURE must be "true" or "false".');
   }
 
+  const collaboration = readCollaboration(env, problems);
+
   const github = {
     token: env.GITHUB_TOKEN ?? "",
     owner: env.GITHUB_OWNER ?? "",
@@ -89,7 +107,66 @@ export function loadConfig(env: Env): Config {
     sessionSecret,
     cookieSecure,
     github,
+    collaboration,
   };
+}
+
+const COLLABORATION_KEYS = [
+  "HOCUSPOCUS_PUBLIC_URL",
+  "HOCUSPOCUS_INTERNAL_URL",
+  "HOCUSPOCUS_JWT_SECRET",
+  "HOCUSPOCUS_WEBHOOK_SECRET",
+] as const;
+
+/** All four values or none: collaboration is optional, but never half-configured. */
+function readCollaboration(
+  env: Env,
+  problems: string[],
+): CollaborationConfig | null {
+  const values = COLLABORATION_KEYS.map((name) => env[name] ?? "");
+  if (values.every((value) => value === "")) return null;
+
+  COLLABORATION_KEYS.forEach((name, index) => {
+    if (values[index] === "") {
+      problems.push(
+        `${name} is required when any other HOCUSPOCUS_* value is set.`,
+      );
+    }
+  });
+
+  const [publicUrl = "", internalUrl = "", jwtSecret = "", webhookSecret = ""] =
+    values;
+  if (publicUrl !== "" && !isWebSocketUrl(publicUrl)) {
+    problems.push("HOCUSPOCUS_PUBLIC_URL must be a ws:// or wss:// URL.");
+  }
+  if (internalUrl !== "" && !isWebSocketUrl(internalUrl)) {
+    problems.push("HOCUSPOCUS_INTERNAL_URL must be a ws:// or wss:// URL.");
+  }
+  problems.push(
+    ...checkSecret("HOCUSPOCUS_JWT_SECRET", jwtSecret, MIN_SECRET_LENGTH),
+  );
+  problems.push(
+    ...checkSecret(
+      "HOCUSPOCUS_WEBHOOK_SECRET",
+      webhookSecret,
+      MIN_SECRET_LENGTH,
+    ),
+  );
+  if (jwtSecret !== "" && jwtSecret === webhookSecret) {
+    problems.push(
+      "HOCUSPOCUS_JWT_SECRET and HOCUSPOCUS_WEBHOOK_SECRET must be different.",
+    );
+  }
+
+  return { publicUrl, internalUrl, jwtSecret, webhookSecret };
+}
+
+function isWebSocketUrl(value: string): boolean {
+  try {
+    return ["ws:", "wss:"].includes(new URL(value).protocol);
+  } catch {
+    return false;
+  }
 }
 
 function checkGitHub(github: GitHubConfig): string[] {

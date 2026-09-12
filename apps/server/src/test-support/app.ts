@@ -4,8 +4,12 @@ import { createDocumentRepository } from "../db/document-repository.ts";
 import { createFakeGitHubClient, type FakeGitHub } from "../github/fake.ts";
 import { createRateLimiter } from "../lib/rate-limiter.ts";
 import { createAstroProjectService } from "../services/astro-project.ts";
+import { createCollabService } from "../services/collab.ts";
 import { createCollaboratorService } from "../services/collaborators.ts";
-import { createDocumentService } from "../services/documents.ts";
+import {
+  createDocumentService,
+  type DocumentService,
+} from "../services/documents.ts";
 import { createDraftOpener } from "../services/draft-opener.ts";
 import { createHealthService } from "../services/health.ts";
 import { createRepositoryService } from "../services/repository.ts";
@@ -34,8 +38,13 @@ export const TEST_FILES: Record<string, string> = {
   "src/content/blog/hello.md": "---\ntitle: Hello\n---\n\n# Hello\n",
 };
 
+export const TEST_JWT_SECRET = "collab-jwt-secret-that-is-long-enough";
+export const TEST_WEBHOOK_SECRET = "collab-webhook-secret-long-enough!!";
+
 export interface TestAppOptions {
   db?: Db;
+  /** Pass a URL to switch collaboration on for the test app. */
+  collaborationUrl?: string;
   loginLimit?: number;
   secret?: string;
   files?: Record<string, string>;
@@ -45,6 +54,8 @@ export interface TestApp {
   app: ReturnType<typeof createApp>;
   db: Db;
   github: FakeGitHub;
+  /** The same draft storage the app uses, for assertions. */
+  documents: DocumentService;
 }
 
 export function buildTestApp(options: TestAppOptions = {}): TestApp {
@@ -66,6 +77,18 @@ export function buildTestApp(options: TestAppOptions = {}): TestApp {
     project,
     documents,
     drafts: createDraftOpener({ documents, repository, project }),
+    collab: createCollabService({
+      config:
+        options.collaborationUrl === undefined
+          ? null
+          : {
+              publicUrl: options.collaborationUrl,
+              internalUrl: options.collaborationUrl,
+              jwtSecret: TEST_JWT_SECRET,
+              webhookSecret: TEST_WEBHOOK_SECRET,
+            },
+      documents,
+    }),
     sessions: createSessionService({
       db,
       password: TEST_PASSWORD,
@@ -78,7 +101,7 @@ export function buildTestApp(options: TestAppOptions = {}): TestApp {
     sessionSecret: options.secret ?? TEST_SECRET,
     cookieSecure: false,
   });
-  return { app, db, github };
+  return { app, db, github, documents };
 }
 
 type App = TestApp["app"];

@@ -4,3 +4,4 @@ pnpm-lock.yaml
 **/data
 .claude-flow
 .playwright-mcp
+.env.example
