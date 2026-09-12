@@ -11,6 +11,11 @@ import {
 import type { CollabService } from "../services/collab.ts";
 import type { DraftOpener } from "../services/draft-opener.ts";
 import { MAX_SOURCE_BYTES } from "../services/documents.ts";
+import type {
+  PublishError,
+  PublishErrorCode,
+  PublishService,
+} from "../services/publish.ts";
 
 const BODY_LIMIT_BYTES = 2 * MAX_SOURCE_BYTES;
 
@@ -18,13 +23,18 @@ interface Deps {
   documents: DocumentService;
   drafts: DraftOpener;
   collab: CollabService;
+  publish: PublishService;
 }
 
-/** `/api/documents`: drafts in SQLite. Nothing here writes to GitHub. */
+/**
+ * `/api/documents`: drafts in SQLite. Only the publish routes reach GitHub,
+ * and only to a `cms/` branch (docs/adr/0004-one-branch-per-content-item.md).
+ */
 export function documentRoutes({
   documents,
   drafts,
   collab,
+  publish,
 }: Deps): Hono<AuthEnv> {
   const routes = new Hono<AuthEnv>();
   const withName = requireCollaborator();
@@ -75,8 +85,28 @@ export function documentRoutes({
     return c.json({ document, created }, created ? 201 : 200);
   });
 
-  routes.get("/:id", (c) =>
-    c.json({ document: documents.get(c.req.param("id")) }),
+  routes.get("/:id", async (c) => {
+    const id = c.req.param("id");
+    // `refresh` asks GitHub about this draft's pull request, on demand.
+    const document =
+      new URL(c.req.url).searchParams.get("refresh") === "true"
+        ? await publish.refresh(id)
+        : documents.get(id);
+    return c.json({ document });
+  });
+
+  routes.post("/:id/publish", withName, async (c) =>
+    c.json(
+      await publish.publish(c.req.param("id"), c.var.session.collaborator),
+    ),
+  );
+
+  routes.get("/:id/drift", async (c) =>
+    c.json(await publish.drift(c.req.param("id"))),
+  );
+
+  routes.post("/:id/resync", withName, async (c) =>
+    c.json(await publish.resync(c.req.param("id"))),
   );
 
   // A short-lived token for the HocusPocus room of this draft.
@@ -167,6 +197,30 @@ export function documentErrorResponse(
       },
     },
     status,
+  );
+}
+
+/** Maps a PublishError to its HTTP status and body. */
+export function publishErrorResponse(
+  c: Context,
+  error: PublishError,
+): Response {
+  const statuses: Record<PublishErrorCode, ContentfulStatusCode> = {
+    drift: 409,
+    branch_blocked: 409,
+    not_found: 404,
+    invalid: 400,
+  };
+
+  return c.json(
+    {
+      error: {
+        code: error.code,
+        message: error.message,
+        ...(error.drift === undefined ? {} : { drift: error.drift }),
+      },
+    },
+    statuses[error.code],
   );
 }
 

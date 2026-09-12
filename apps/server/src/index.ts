@@ -17,6 +17,7 @@ import { createDraftOpener } from "./services/draft-opener.ts";
 import { createMediaService } from "./services/media.ts";
 import { createMediaReferenceTracker } from "./services/media-references.ts";
 import { createHealthService } from "./services/health.ts";
+import { createPublishService } from "./services/publish.ts";
 import {
   createRepositoryService,
   RepositoryError,
@@ -44,8 +45,12 @@ async function main(): Promise<void> {
   const db = openDatabase(join(config.dataDir, "cms.sqlite"));
   const collaborators = createCollaboratorService({ db });
   const project = createAstroProjectService({ repository });
-  const documents = createDocumentService({
-    repository: createDocumentRepository(db),
+  const documentRepository = createDocumentRepository(db);
+  const documents = createDocumentService({ repository: documentRepository });
+  const publish = createPublishService({
+    documents,
+    documentRepository,
+    repository,
   });
 
   const mediaRepository = createMediaRepository(db);
@@ -64,6 +69,7 @@ async function main(): Promise<void> {
     project,
     documents,
     drafts: createDraftOpener({ documents, repository, project }),
+    publish,
     media,
     mediaReferences,
     collab: createCollabService({

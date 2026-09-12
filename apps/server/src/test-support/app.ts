@@ -16,6 +16,7 @@ import {
 } from "../services/documents.ts";
 import { createDraftOpener } from "../services/draft-opener.ts";
 import { createHealthService } from "../services/health.ts";
+import { createPublishService } from "../services/publish.ts";
 import { createRepositoryService } from "../services/repository.ts";
 import { createSessionService } from "../services/sessions.ts";
 
@@ -74,8 +75,12 @@ export function buildTestApp(options: TestAppOptions = {}): TestApp {
   });
   const collaborators = createCollaboratorService({ db });
   const project = createAstroProjectService({ repository });
-  const documents = createDocumentService({
-    repository: createDocumentRepository(db),
+  const documentRepository = createDocumentRepository(db);
+  const documents = createDocumentService({ repository: documentRepository });
+  const publish = createPublishService({
+    documents,
+    documentRepository,
+    repository,
   });
 
   const mediaRepository = createMediaRepository(db);
@@ -96,6 +101,7 @@ export function buildTestApp(options: TestAppOptions = {}): TestApp {
     project,
     documents,
     drafts: createDraftOpener({ documents, repository, project }),
+    publish,
     media,
     mediaReferences,
     collab: createCollabService({
