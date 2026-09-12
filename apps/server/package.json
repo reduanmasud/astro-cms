@@ -13,10 +13,12 @@
   },
   "dependencies": {
     "@astro-cms/markdown": "workspace:*",
+    "@aws-sdk/client-s3": "catalog:",
     "@babel/parser": "catalog:",
     "@hono/node-server": "catalog:",
     "better-sqlite3": "catalog:",
     "hono": "catalog:",
+    "image-size": "catalog:",
     "jose": "catalog:"
   },
   "devDependencies": {

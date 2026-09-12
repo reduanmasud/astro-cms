@@ -1,10 +1,14 @@
 import { createApp } from "../app.ts";
 import { openDatabase, type Db } from "../db/database.ts";
 import { createDocumentRepository } from "../db/document-repository.ts";
+import { createMediaRepository } from "../db/media-repository.ts";
 import { createFakeGitHubClient, type FakeGitHub } from "../github/fake.ts";
 import { createRateLimiter } from "../lib/rate-limiter.ts";
 import { createAstroProjectService } from "../services/astro-project.ts";
+import { createFakeStorage, type FakeStorage } from "../media/fake-storage.ts";
 import { createCollabService } from "../services/collab.ts";
+import { createMediaService } from "../services/media.ts";
+import { createMediaReferenceTracker } from "../services/media-references.ts";
 import { createCollaboratorService } from "../services/collaborators.ts";
 import {
   createDocumentService,
@@ -45,6 +49,8 @@ export interface TestAppOptions {
   db?: Db;
   /** Pass a URL to switch collaboration on for the test app. */
   collaborationUrl?: string;
+  /** Set false to run without media storage. */
+  mediaEnabled?: boolean;
   loginLimit?: number;
   secret?: string;
   files?: Record<string, string>;
@@ -54,6 +60,7 @@ export interface TestApp {
   app: ReturnType<typeof createApp>;
   db: Db;
   github: FakeGitHub;
+  mediaStorage: FakeStorage;
   /** The same draft storage the app uses, for assertions. */
   documents: DocumentService;
 }
@@ -71,12 +78,26 @@ export function buildTestApp(options: TestAppOptions = {}): TestApp {
     repository: createDocumentRepository(db),
   });
 
+  const mediaRepository = createMediaRepository(db);
+  const mediaStorage = createFakeStorage();
+  const media = createMediaService({
+    repository: mediaRepository,
+    storage: options.mediaEnabled === false ? null : mediaStorage.storage,
+  });
+  const mediaReferences = createMediaReferenceTracker({
+    repository: mediaRepository,
+    documents,
+    publicUrl: "https://media.test",
+  });
+
   const app = createApp({
     health: createHealthService({ db }),
     repository,
     project,
     documents,
     drafts: createDraftOpener({ documents, repository, project }),
+    media,
+    mediaReferences,
     collab: createCollabService({
       config:
         options.collaborationUrl === undefined
@@ -101,7 +122,7 @@ export function buildTestApp(options: TestAppOptions = {}): TestApp {
     sessionSecret: options.secret ?? TEST_SECRET,
     cookieSecure: false,
   });
-  return { app, db, github, documents };
+  return { app, db, github, documents, mediaStorage };
 }
 
 type App = TestApp["app"];

@@ -14,7 +14,13 @@ describe("openDatabase", () => {
       )
       .pluck()
       .all();
-    expect(tables).toEqual(["collaborators", "documents", "sessions"]);
+    expect(tables).toEqual([
+      "collaborators",
+      "documents",
+      "media",
+      "media_references",
+      "sessions",
+    ]);
   });
 
   it("enables foreign keys", () => {

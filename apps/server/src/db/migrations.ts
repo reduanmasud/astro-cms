@@ -51,4 +51,31 @@ export const migrations: readonly string[] = [
 
   CREATE INDEX documents_collection ON documents (collection, updated_at DESC);
   `,
+  // 3: media and where it is used (docs/adr/0017-media-storage.md).
+  // Objects are content-addressed, so the same bytes are stored once.
+  `
+  CREATE TABLE media (
+    id           TEXT    PRIMARY KEY,
+    object_key   TEXT    NOT NULL UNIQUE,
+    filename     TEXT    NOT NULL,
+    content_type TEXT    NOT NULL,
+    size         INTEGER NOT NULL,
+    sha256       TEXT    NOT NULL UNIQUE,
+    width        INTEGER,
+    height       INTEGER,
+    uploaded_by  TEXT    REFERENCES collaborators (id) ON DELETE SET NULL,
+    uploaded_at  INTEGER NOT NULL,
+    unused_since INTEGER
+  ) STRICT;
+
+  CREATE INDEX media_uploaded_at ON media (uploaded_at DESC);
+
+  CREATE TABLE media_references (
+    media_id    TEXT NOT NULL REFERENCES media (id) ON DELETE CASCADE,
+    document_id TEXT NOT NULL REFERENCES documents (id) ON DELETE CASCADE,
+    PRIMARY KEY (media_id, document_id)
+  ) STRICT;
+
+  CREATE INDEX media_references_document ON media_references (document_id);
+  `,
 ];

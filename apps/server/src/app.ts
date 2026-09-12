@@ -8,10 +8,13 @@ import { apiError } from "./http/errors.ts";
 import type { RateLimiter } from "./lib/rate-limiter.ts";
 import { collabRoutes } from "./routes/collab.ts";
 import { collectionRoutes } from "./routes/collections.ts";
+import { mediaErrorResponse, mediaRoutes } from "./routes/media.ts";
 import { documentErrorResponse, documentRoutes } from "./routes/documents.ts";
 import { sessionRoutes } from "./routes/session.ts";
 import type { AstroProjectService } from "./services/astro-project.ts";
 import type { CollabService } from "./services/collab.ts";
+import { MediaError, type MediaService } from "./services/media.ts";
+import type { MediaReferenceTracker } from "./services/media-references.ts";
 import { DocumentError, type DocumentService } from "./services/documents.ts";
 import type { DraftOpener } from "./services/draft-opener.ts";
 import type { HealthService } from "./services/health.ts";
@@ -25,6 +28,8 @@ export interface AppDeps {
   documents: DocumentService;
   drafts: DraftOpener;
   collab: CollabService;
+  media: MediaService;
+  mediaReferences: MediaReferenceTracker;
   sessions: SessionService;
   loginLimiter: RateLimiter;
   sessionSecret: string;
@@ -54,6 +59,8 @@ export function createApp({
   documents,
   drafts,
   collab,
+  media,
+  mediaReferences,
   sessions,
   loginLimiter,
   sessionSecret,
@@ -79,12 +86,14 @@ export function createApp({
   app.route("/api/collab", collabRoutes(collab));
   app.route("/api/collections", collectionRoutes(project));
   app.route("/api/documents", documentRoutes({ documents, drafts, collab }));
+  app.route("/api/media", mediaRoutes({ media, references: mediaReferences }));
   app.route("/api/session", sessionRoutes({ sessions, loginLimiter, cookie }));
   app.all("/api/*", (c) => apiError(c, 404, "not_found", "No such API route."));
 
   app.onError((error, c) => {
     if (error instanceof HTTPException) return error.getResponse();
     if (error instanceof DocumentError) return documentErrorResponse(c, error);
+    if (error instanceof MediaError) return mediaErrorResponse(c, error);
     if (error instanceof GitHubError) {
       return apiError(c, 502, "github_unavailable", error.message);
     }

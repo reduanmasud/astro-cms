@@ -26,6 +26,21 @@ export interface CollaborationConfig {
   readonly webhookSecret: string;
 }
 
+/**
+ * S3-compatible object storage for media (docs/adr/0017-media-storage.md).
+ * Media is off unless all six values are set. Credentials stay on the server.
+ */
+export interface StorageConfig {
+  /** API endpoint, e.g. https://s3.amazonaws.com or a MinIO/R2 URL. */
+  readonly endpoint: string;
+  readonly bucket: string;
+  readonly region: string;
+  readonly accessKey: string;
+  readonly secretKey: string;
+  /** Public base URL objects are served from, e.g. https://media.example.com. */
+  readonly publicUrl: string;
+}
+
 export interface Config {
   readonly port: number;
   readonly dataDir: string;
@@ -34,6 +49,7 @@ export interface Config {
   readonly cookieSecure: boolean;
   readonly github: GitHubConfig;
   readonly collaboration: CollaborationConfig | null;
+  readonly storage: StorageConfig | null;
 }
 
 type Env = Readonly<Record<string, string | undefined>>;
@@ -87,6 +103,7 @@ export function loadConfig(env: Env): Config {
   }
 
   const collaboration = readCollaboration(env, problems);
+  const storage = readStorage(env, problems);
 
   const github = {
     token: env.GITHUB_TOKEN ?? "",
@@ -108,6 +125,7 @@ export function loadConfig(env: Env): Config {
     cookieSecure,
     github,
     collaboration,
+    storage,
   };
 }
 
@@ -215,4 +233,60 @@ function parseBoolean(
   if (value === "true") return true;
   if (value === "false") return false;
   return undefined;
+}
+
+const STORAGE_KEYS = [
+  "S3_ENDPOINT",
+  "S3_BUCKET",
+  "S3_REGION",
+  "S3_ACCESS_KEY",
+  "S3_SECRET_KEY",
+  "S3_PUBLIC_URL",
+] as const;
+
+/** All six values or none: media storage is optional, but never half-configured. */
+function readStorage(env: Env, problems: string[]): StorageConfig | null {
+  const values = STORAGE_KEYS.map((name) => env[name] ?? "");
+  if (values.every((value) => value === "")) return null;
+
+  STORAGE_KEYS.forEach((name, index) => {
+    if (values[index] === "") {
+      problems.push(`${name} is required when any other S3_* value is set.`);
+    }
+  });
+
+  const [
+    endpoint = "",
+    bucket = "",
+    region = "",
+    accessKey = "",
+    secretKey = "",
+    publicUrl = "",
+  ] = values;
+  if (endpoint !== "" && !isHttpUrl(endpoint)) {
+    problems.push("S3_ENDPOINT must be an http:// or https:// URL.");
+  }
+  if (publicUrl !== "" && !isHttpUrl(publicUrl)) {
+    problems.push("S3_PUBLIC_URL must be an http:// or https:// URL.");
+  }
+  if (bucket !== "" && !/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/.test(bucket)) {
+    problems.push("S3_BUCKET is not a valid bucket name.");
+  }
+
+  return {
+    endpoint,
+    bucket,
+    region,
+    accessKey,
+    secretKey,
+    publicUrl: publicUrl.replace(/\/+$/, ""),
+  };
+}
+
+function isHttpUrl(value: string): boolean {
+  try {
+    return ["http:", "https:"].includes(new URL(value).protocol);
+  } catch {
+    return false;
+  }
 }

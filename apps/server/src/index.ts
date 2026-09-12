@@ -5,13 +5,17 @@ import { createApp } from "./app.ts";
 import { ConfigError, loadConfig } from "./config.ts";
 import { openDatabase } from "./db/database.ts";
 import { createDocumentRepository } from "./db/document-repository.ts";
+import { createMediaRepository } from "./db/media-repository.ts";
 import { createHttpGitHubClient } from "./github/http-client.ts";
+import { createS3Storage } from "./media/s3-storage.ts";
 import { createRateLimiter } from "./lib/rate-limiter.ts";
 import { createAstroProjectService } from "./services/astro-project.ts";
 import { createCollabService } from "./services/collab.ts";
 import { createCollaboratorService } from "./services/collaborators.ts";
 import { createDocumentService } from "./services/documents.ts";
 import { createDraftOpener } from "./services/draft-opener.ts";
+import { createMediaService } from "./services/media.ts";
+import { createMediaReferenceTracker } from "./services/media-references.ts";
 import { createHealthService } from "./services/health.ts";
 import {
   createRepositoryService,
@@ -44,12 +48,24 @@ async function main(): Promise<void> {
     repository: createDocumentRepository(db),
   });
 
+  const mediaRepository = createMediaRepository(db);
+  const storage =
+    config.storage === null ? null : createS3Storage(config.storage);
+  const media = createMediaService({ repository: mediaRepository, storage });
+  const mediaReferences = createMediaReferenceTracker({
+    repository: mediaRepository,
+    documents,
+    publicUrl: config.storage?.publicUrl ?? null,
+  });
+
   const app = createApp({
     health: createHealthService({ db }),
     repository,
     project,
     documents,
     drafts: createDraftOpener({ documents, repository, project }),
+    media,
+    mediaReferences,
     collab: createCollabService({
       config: config.collaboration,
       documents,

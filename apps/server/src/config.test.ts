@@ -26,6 +26,7 @@ describe("loadConfig", () => {
         baseBranch: "main",
       },
       collaboration: null,
+      storage: null,
     });
   });
 

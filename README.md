@@ -151,6 +151,33 @@ webhook extension against `POST /api/collab/webhook` with the `create` and
 `change` events. `apps/collab/src/index.ts` is that setup in about
 fifty lines. See [ADR-0016](docs/adr/0016-collaboration-service.md).
 
+## Media
+
+Images are stored in an S3-compatible bucket (AWS S3, Cloudflare R2, MinIO)
+with their metadata in SQLite. Set all six `S3_*` values to switch it on, or
+none to leave `/api/media` returning 404. `docker compose up` starts MinIO for
+development; create the bucket once at <http://localhost:9001>.
+
+Every upload is checked by reading the file's own header, not the browser's
+`Content-Type`: PNG, JPEG, GIF, WebP, and AVIF up to 10 MB. SVG is refused
+because it can carry scripts. Files are stored by content hash, so uploading
+the same image twice stores it once.
+
+```sh
+# upload (multipart), list, inspect, delete
+curl -b cookies.txt -F file=@hero.png http://localhost:3000/api/media
+curl -b cookies.txt 'http://localhost:3000/api/media?unused=true'
+curl -b cookies.txt 'http://localhost:3000/api/media/<id>?verify=true'
+curl -b cookies.txt -X DELETE -H 'Sec-Fetch-Site: same-origin' \
+  http://localhost:3000/api/media/<id>
+```
+
+The CMS tracks which drafts use which file and refuses to delete one that is
+still referenced. Nothing is deleted automatically yet; the collector in
+[ADR-0008](docs/adr/0008-media-storage-and-gc.md) arrives with publishing.
+Storage credentials never reach the browser
+([ADR-0017](docs/adr/0017-media-storage.md)).
+
 ## Known limitations
 
 - The login rate limit (10 failed attempts per 15 minutes) is keyed by the TCP
