@@ -3,7 +3,11 @@ import {
   type GitHubClient,
   type PullRequest,
 } from "../github/client.ts";
-import { CMS_BRANCH_PREFIX, isValidBranchName } from "../github/names.ts";
+import {
+  CMS_BRANCH_PREFIX,
+  isSafeRepositoryPath,
+  isValidBranchName,
+} from "../github/names.ts";
 import { explainAccessError, RepositoryError } from "./repository-errors.ts";
 import { collectStatus, type RepositoryStatus } from "./repository-status.ts";
 
@@ -166,17 +170,8 @@ function assertCmsBranch(branch: string, baseBranch: string): void {
   }
 }
 
-/** Repository-relative paths only: no leading slash, backslashes, or `.`/`..` segments. */
 function assertSafePath(path: string): void {
-  const safe =
-    path !== "" &&
-    !path.startsWith("/") &&
-    !path.includes("\\") &&
-    !path.includes("\0") &&
-    path
-      .split("/")
-      .every(
-        (segment) => segment !== "" && segment !== "." && segment !== "..",
-      );
-  if (!safe) throw new RepositoryError(`Invalid repository path: "${path}".`);
+  if (!isSafeRepositoryPath(path)) {
+    throw new RepositoryError(`Invalid repository path: "${path}".`);
+  }
 }

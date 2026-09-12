@@ -10,9 +10,9 @@ A small, self-hosted CMS for **one Astro project in one GitHub repository**.
 - MCP is a first-class interface to the same services as the web UI.
 - Auth is one shared password plus a display name. No accounts, teams, or OAuth.
 
-> **Status: early.** The workspace, the health endpoint, shared-password
-> login, display names, the app shell, and the GitHub repository service
-> exist. Editing, the publishing flow, media, and MCP are not built yet.
+> **Status: early.** Login, GitHub repository access, Astro collection
+> discovery, SQLite drafts, and a Tiptap editor with autosave exist.
+> Publishing to GitHub, live collaboration, media, and MCP are not built yet.
 
 ## Documentation
 
@@ -107,7 +107,8 @@ Run a script in one package with `pnpm --filter @astro-cms/server test`.
 
 ```
 apps/server/            Hono API + SQLite (@astro-cms/server)
-apps/web/               React + Vite frontend (@astro-cms/web)
+apps/web/               React + Vite frontend and editor (@astro-cms/web)
+packages/markdown/      Markdown/MDX <-> editor document (@astro-cms/markdown)
 tooling/eslint-config/  shared ESLint config (@astro-cms/eslint-config)
 tsconfig.base.json      shared TypeScript options
 docs/                   architecture and ADRs

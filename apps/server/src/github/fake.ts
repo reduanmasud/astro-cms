@@ -21,6 +21,7 @@ export interface FakeOptions {
 export interface FakeGitHub {
   readonly client: GitHubClient;
   headOf(branch: string): string | undefined;
+  branchNames(): string[];
   parentOf(sha: string): string | null | undefined;
   pullRequestCount(): number;
   closeAllPullRequests(): void;
@@ -167,6 +168,7 @@ export function createFakeGitHubClient({
   return {
     client,
     headOf: (branch: string) => branches.get(branch),
+    branchNames: () => [...branches.keys()],
     parentOf: (sha: string) => commits.get(sha)?.parent,
     pullRequestCount: () => pullRequests.length,
     closeAllPullRequests: () => {

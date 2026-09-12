@@ -4,9 +4,13 @@ import { serve } from "@hono/node-server";
 import { createApp } from "./app.ts";
 import { ConfigError, loadConfig } from "./config.ts";
 import { openDatabase } from "./db/database.ts";
+import { createDocumentRepository } from "./db/document-repository.ts";
 import { createHttpGitHubClient } from "./github/http-client.ts";
 import { createRateLimiter } from "./lib/rate-limiter.ts";
+import { createAstroProjectService } from "./services/astro-project.ts";
 import { createCollaboratorService } from "./services/collaborators.ts";
+import { createDocumentService } from "./services/documents.ts";
+import { createDraftOpener } from "./services/draft-opener.ts";
 import { createHealthService } from "./services/health.ts";
 import {
   createRepositoryService,
@@ -34,10 +38,17 @@ async function main(): Promise<void> {
   mkdirSync(config.dataDir, { recursive: true });
   const db = openDatabase(join(config.dataDir, "cms.sqlite"));
   const collaborators = createCollaboratorService({ db });
+  const project = createAstroProjectService({ repository });
+  const documents = createDocumentService({
+    repository: createDocumentRepository(db),
+  });
 
   const app = createApp({
     health: createHealthService({ db }),
     repository,
+    project,
+    documents,
+    drafts: createDraftOpener({ documents, repository, project }),
     sessions: createSessionService({
       db,
       password: config.cmsPassword,

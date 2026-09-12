@@ -28,3 +28,21 @@ export function authenticate(
     await next();
   });
 }
+
+/**
+ * Requires a chosen display name, so every write records who made it.
+ * Runs after `authenticate`.
+ */
+export function requireCollaborator(): MiddlewareHandler<AuthEnv> {
+  return createMiddleware<AuthEnv>(async (c, next) => {
+    if (c.var.session.collaborator === null) {
+      return apiError(
+        c,
+        403,
+        "display_name_required",
+        "Choose a display name first.",
+      );
+    }
+    await next();
+  });
+}

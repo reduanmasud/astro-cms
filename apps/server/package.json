@@ -12,11 +12,13 @@
     "github": "node --env-file-if-exists=../../.env scripts/github.ts"
   },
   "dependencies": {
+    "@babel/parser": "catalog:",
     "@hono/node-server": "catalog:",
     "better-sqlite3": "catalog:",
     "hono": "catalog:"
   },
   "devDependencies": {
+    "@babel/types": "catalog:",
     "@types/better-sqlite3": "catalog:",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",

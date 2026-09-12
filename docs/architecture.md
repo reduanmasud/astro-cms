@@ -75,7 +75,7 @@ in a service, not in the tool.
 | Data                         | Source of truth                        | Notes                                            |
 | ---------------------------- | -------------------------------------- | ------------------------------------------------ |
 | Published Markdown/MDX       | GitHub `main` branch                   | The CMS never writes to `main` directly.         |
-| In-progress drafts           | SQLite (Yjs document state)            | Drafting never calls GitHub write APIs.          |
+| In-progress drafts           | SQLite (Markdown source)               | Drafting never calls GitHub write APIs.          |
 | Branch / PR per content item | SQLite, mirrored from GitHub           | One content item has one branch and one PR.      |
 | Media binaries               | S3-compatible bucket                   | Only object keys and metadata live in SQLite.    |
 | Media references             | SQLite, recomputed                     | Built from drafts, open CMS PRs, and `main`.     |
@@ -85,14 +85,24 @@ in a service, not in the tool.
 
 ## Core flows
 
+### Discovery
+
+The server reads the base branch once per commit and caches the result: the
+Astro config, the `astro` version from `package.json`, `src/content.config.*`
+(the legacy `src/content/config.*` is reported), and the collections that file
+declares. The config is parsed, never executed
+([ADR-0014](adr/0014-static-content-config-parsing.md)).
+
 ### Drafting
 
 1. A user opens a content item (a file path such as `src/content/blog/hello.md`).
-2. If no draft exists, the server reads the file and the current `main` commit
-   SHA from the GitHub API, converts it to a Yjs document, and stores the
-   document plus `base_commit_sha` in SQLite.
-3. Editors connect to HocusPocus. Changes are merged by Yjs and persisted to
-   SQLite. GitHub is not contacted.
+2. If no draft exists, the server reads the file and the current base commit
+   SHA from the GitHub API and stores the source plus `base_commit_sha` in
+   SQLite ([ADR-0013](adr/0013-draft-storage.md)).
+3. The editor parses that source into an editor document and saves the
+   serialized Markdown back to SQLite as you type
+   ([ADR-0015](adr/0015-editor-model-and-serialization.md)). GitHub is not
+   contacted. Yjs and HocusPocus replace single-editor saving later.
 
 Collaboration is live editing, presence, and cursors only
 ([ADR-0010](adr/0010-collaboration-scope.md)).
@@ -167,14 +177,21 @@ health, login, and logout ([ADR-0009](adr/0009-minimal-authentication.md)).
 
 ### HTTP API
 
-| Route                           | Auth   | Purpose                                         |
-| ------------------------------- | ------ | ----------------------------------------------- |
-| `GET /api/health`               | public | `{ "ok": true }` when SQLite answers, else 503. |
-| `POST /api/session`             | public | Log in with `{ "password" }`. Rate-limited.     |
-| `DELETE /api/session`           | public | Log out. Always succeeds.                       |
-| `GET /api/session`              | yes    | `{ "collaborator": { id, name } \| null }`.     |
-| `PUT /api/session/display-name` | yes    | Choose a display name with `{ "name" }`.        |
-| `GET /api/repository`           | yes    | Read-only GitHub checks and repository stats.   |
+| Route                              | Auth       | Purpose                                              |
+| ---------------------------------- | ---------- | ---------------------------------------------------- |
+| `GET /api/health`                  | public     | `{ "ok": true }` when SQLite answers, else 503.      |
+| `POST /api/session`                | public     | Log in with `{ "password" }`. Rate-limited.          |
+| `DELETE /api/session`              | public     | Log out. Always succeeds.                            |
+| `GET /api/session`                 | yes        | `{ "collaborator": { id, name } \| null }`.          |
+| `PUT /api/session/display-name`    | yes        | Choose a display name with `{ "name" }`.             |
+| `GET /api/repository`              | yes        | Read-only GitHub checks and repository stats.        |
+| `GET /api/collections`             | yes        | Astro project info and its content collections.      |
+| `GET /api/collections/:collection` | yes        | One collection with its entries.                     |
+| `GET /api/documents`               | yes        | List or search drafts (`collection`, `status`, `q`). |
+| `POST /api/documents`              | yes + name | Open a repository path as a draft.                   |
+| `GET /api/documents/:id`           | yes        | One draft with its source.                           |
+| `PATCH /api/documents/:id`         | yes + name | Save source, slug, or status.                        |
+| `DELETE /api/documents/:id`        | yes + name | Delete a draft.                                      |
 
 Errors always have the shape `{ "error": { "code": "...", "message": "..." } }`.
 
@@ -194,12 +211,19 @@ apps/
     src/index.ts          process entry: config, database, HTTP server
     src/app.ts            Hono wiring and the public-route allowlist
     src/config.ts         environment validation
-    src/db/               SQLite connection and migrations (adapter)
+    src/astro/            reads content.config.* without executing it
+    src/db/               SQLite connection, migrations, document repository
+    src/documents/        the draft model
+    src/github/           GitHubClient interface, HTTP client, in-memory fake
     src/http/             cookies, authentication middleware, error shape
     src/routes/           Hono route modules (interfaces)
     src/services/         business rules
     src/lib/              small utilities (rate limiter)
+    src/test-support/     shared test harness
   web/                    @astro-cms/web: React + Vite frontend
+    src/editor/           Tiptap editor, slash menu, autosave
+packages/
+  markdown/               @astro-cms/markdown: Markdown/MDX <-> editor document
 tooling/
   eslint-config/          @astro-cms/eslint-config: shared lint rules
 tsconfig.base.json        compiler options every package extends

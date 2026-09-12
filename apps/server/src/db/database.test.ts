@@ -1,3 +1,4 @@
+import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 import { migrations } from "./migrations.ts";
 import { migrate, openDatabase } from "./database.ts";
@@ -13,7 +14,7 @@ describe("openDatabase", () => {
       )
       .pluck()
       .all();
-    expect(tables).toEqual(["collaborators", "sessions"]);
+    expect(tables).toEqual(["collaborators", "documents", "sessions"]);
   });
 
   it("enables foreign keys", () => {
@@ -29,6 +30,21 @@ describe("migrate", () => {
 
     expect(() => migrate(db)).not.toThrow();
     expect(db.pragma("user_version", { simple: true })).toBe(migrations.length);
+  });
+
+  it("upgrades an older database step by step and keeps its data", () => {
+    const db = new Database(":memory:");
+    db.exec(migrations[0] ?? "");
+    db.pragma("user_version = 1");
+    db.prepare("INSERT INTO collaborators VALUES ('c1', 'Ada', 1, 1)").run();
+
+    migrate(db);
+
+    expect(db.pragma("user_version", { simple: true })).toBe(migrations.length);
+    expect(db.prepare("SELECT name FROM collaborators").pluck().all()).toEqual([
+      "Ada",
+    ]);
+    expect(db.prepare("SELECT COUNT(*) FROM documents").pluck().get()).toBe(0);
   });
 
   it("refuses a database created by a newer build", () => {

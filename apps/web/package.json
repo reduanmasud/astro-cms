@@ -12,6 +12,13 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@astro-cms/markdown": "workspace:*",
+    "@tiptap/core": "catalog:",
+    "@tiptap/extension-table": "catalog:",
+    "@tiptap/pm": "catalog:",
+    "@tiptap/react": "catalog:",
+    "@tiptap/starter-kit": "catalog:",
+    "@tiptap/suggestion": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"
   },
@@ -21,6 +28,7 @@
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@vitest/coverage-v8": "catalog:",
+    "jsdom": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"

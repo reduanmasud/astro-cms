@@ -98,3 +98,122 @@ export function getRepositoryStatus(): Promise<RepositoryStatus> {
 export function logout(): Promise<void> {
   return request<void>("/api/session", { method: "DELETE" });
 }
+
+// --- Astro collections -------------------------------------------------------
+
+export interface SchemaField {
+  name: string;
+  type: string;
+  required: boolean;
+  default?: unknown;
+  values?: unknown[];
+  items?: { type: string };
+  fields?: SchemaField[];
+  collection?: string;
+  nullable?: true;
+  format?: string;
+}
+
+export interface CollectionSummary {
+  name: string;
+  loader: string;
+  contentPath: string | null;
+  pattern: string | null;
+  formats: string[];
+  entryCount: number | null;
+  schema:
+    | { inferred: true; fields: SchemaField[] }
+    | { inferred: false; reason: string };
+}
+
+export interface AstroProjectInfo {
+  isAstroProject: boolean;
+  astroConfigPath: string | null;
+  astroVersion: string | null;
+  contentConfigPath: string | null;
+  collections: CollectionSummary[];
+  warnings: string[];
+}
+
+export interface CollectionEntry {
+  path: string;
+  format: string;
+}
+
+export function getCollections(): Promise<AstroProjectInfo> {
+  return request<AstroProjectInfo>("/api/collections");
+}
+
+export function getCollection(
+  name: string,
+): Promise<{ collection: CollectionSummary; entries: CollectionEntry[] }> {
+  return request(`/api/collections/${encodeURIComponent(name)}`);
+}
+
+// --- Drafts ------------------------------------------------------------------
+
+export type DocumentStatus = "draft" | "in_review" | "published";
+
+export interface DocumentSummary {
+  id: string;
+  collection: string;
+  path: string;
+  format: "md" | "mdx";
+  slug: string;
+  status: DocumentStatus;
+  revision: number;
+  createdBy: Collaborator | null;
+  updatedBy: Collaborator | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface CmsDocument extends DocumentSummary {
+  source: string;
+}
+
+export function listDocuments(
+  params: {
+    collection?: string;
+    q?: string;
+  } = {},
+): Promise<{ documents: DocumentSummary[] }> {
+  const query = new URLSearchParams();
+  if (params.collection) query.set("collection", params.collection);
+  if (params.q) query.set("q", params.q);
+  const suffix = query.size > 0 ? `?${query.toString()}` : "";
+  return request(`/api/documents${suffix}`);
+}
+
+/** Opens (or creates) the draft for a repository path. */
+export function openDocument(
+  collection: string,
+  path: string,
+): Promise<{ document: CmsDocument; created: boolean }> {
+  return request("/api/documents", sendJson("POST", { collection, path }));
+}
+
+export function getDocument(id: string): Promise<{ document: CmsDocument }> {
+  return request(`/api/documents/${encodeURIComponent(id)}`);
+}
+
+export function saveDocument(
+  id: string,
+  changes: {
+    source?: string;
+    slug?: string;
+    status?: DocumentStatus;
+    expectedRevision?: number;
+  },
+): Promise<{ document: CmsDocument }> {
+  return request(
+    `/api/documents/${encodeURIComponent(id)}`,
+    sendJson("PATCH", changes),
+  );
+}
+
+export function deleteDocument(id: string): Promise<void> {
+  return request(`/api/documents/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}

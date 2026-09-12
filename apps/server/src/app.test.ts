@@ -2,17 +2,14 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createApp } from "./app.ts";
-import { openDatabase, type Db } from "./db/database.ts";
-import { createRateLimiter } from "./lib/rate-limiter.ts";
-import { createCollaboratorService } from "./services/collaborators.ts";
-import { createFakeGitHubClient } from "./github/fake.ts";
-import { createHealthService } from "./services/health.ts";
-import { createRepositoryService } from "./services/repository.ts";
-import { createSessionService } from "./services/sessions.ts";
-
-const PASSWORD = "correct-horse-battery";
-const SECRET = "test-session-secret-that-is-long-enough";
+import { openDatabase } from "./db/database.ts";
+import {
+  buildTestApp,
+  TEST_PASSWORD as PASSWORD,
+  TEST_SECRET as SECRET,
+  type TestApp,
+  type TestAppOptions,
+} from "./test-support/app.ts";
 
 interface Body {
   ok?: boolean;
@@ -20,27 +17,8 @@ interface Body {
   error?: { code: string; message: string };
 }
 
-function buildApp(
-  options: { db?: Db; loginLimit?: number; secret?: string } = {},
-) {
-  const db = options.db ?? openDatabase(":memory:");
-  const collaborators = createCollaboratorService({ db });
-  return createApp({
-    health: createHealthService({ db }),
-    repository: createRepositoryService({
-      github: createFakeGitHubClient({
-        files: { "astro.config.mjs": "export default {};\n" },
-      }).client,
-      baseBranch: "main",
-    }),
-    sessions: createSessionService({ db, password: PASSWORD, collaborators }),
-    loginLimiter: createRateLimiter({
-      limit: options.loginLimit ?? 100,
-      windowMs: 60_000,
-    }),
-    sessionSecret: options.secret ?? SECRET,
-    cookieSecure: false,
-  });
+function buildApp(options: TestAppOptions = {}): TestApp["app"] {
+  return buildTestApp(options).app;
 }
 
 type App = ReturnType<typeof buildApp>;

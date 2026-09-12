@@ -1,10 +1,27 @@
 packages:
   - apps/*
+  - packages/*
   - tooling/*
 
 # One version per dependency across the workspace. Packages reference these
 # with "catalog:" instead of repeating version ranges.
 catalog:
+  "@babel/parser": ^8.0.5
+  "@babel/types": ^8.0.5
+  "@tiptap/core": ^3.31.3
+  "@tiptap/extension-table": ^3.31.3
+  "@tiptap/pm": ^3.31.3
+  "@tiptap/react": ^3.31.3
+  "@tiptap/starter-kit": ^3.31.3
+  "@tiptap/suggestion": ^3.31.3
+  "@types/mdast": ^4.0.4
+  jsdom: ^30.0.1
+  mdast-util-from-markdown: ^2.0.3
+  mdast-util-gfm: ^3.1.0
+  mdast-util-mdx: ^3.0.0
+  mdast-util-to-markdown: ^2.1.2
+  micromark-extension-gfm: ^3.0.0
+  micromark-extension-mdxjs: ^3.0.0
   "@eslint/js": ^10.0.1
   "@hono/node-server": ^2.1.1
   "@types/better-sqlite3": ^9.6.0
@@ -32,3 +49,7 @@ catalog:
 # the package, so its node-gyp fallback never needs to run.
 allowBuilds:
   better-sqlite3: false
+
+minimumReleaseAgeExclude:
+  - "@babel/parser@8.0.5"
+  - "@babel/types@8.0.5"

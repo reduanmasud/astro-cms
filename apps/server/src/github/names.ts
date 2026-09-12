@@ -24,3 +24,16 @@ export function isValidBranchName(value: string): boolean {
     .split("/")
     .every((segment) => segment !== "" && !segment.startsWith("."));
 }
+
+/** Repository-relative file path: no leading slash, backslashes, NUL, or `.`/`..` segments. */
+export function isSafeRepositoryPath(path: string): boolean {
+  return (
+    path !== "" &&
+    !path.startsWith("/") &&
+    !path.includes("\\") &&
+    !path.includes("\0") &&
+    path
+      .split("/")
+      .every((segment) => segment !== "" && segment !== "." && segment !== "..")
+  );
+}
