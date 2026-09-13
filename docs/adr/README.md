@@ -25,3 +25,4 @@ history. Use [`template.md`](template.md) for new records.
 | [0017](0017-media-storage.md)                    | Media in S3-compatible storage, content-addressed, metadata in SQLite       | accepted | 2026-09-12 |
 | [0018](0018-images-are-editable-nodes.md)        | Images are editable nodes, and pasting one uploads it                       | accepted | 2026-09-12 |
 | [0019](0019-publishing-through-pull-requests.md) | Publishing through pull requests, one branch per content item               | accepted | 2026-09-12 |
+| [0020](0020-mcp-interface.md)                    | MCP on the same app, the same services, its own token                       | accepted | 2026-09-13 |

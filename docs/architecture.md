@@ -199,6 +199,7 @@ health, login, and logout ([ADR-0009](adr/0009-minimal-authentication.md)).
 | `POST /api/documents/:id/resync`       | yes + name | Adopt the current base commit as the draft's baseline.                         |
 | `GET /api/documents/:id/collaboration` | yes + name | A short-lived room token for HocusPocus.                                       |
 | `POST /api/collab/webhook`             | signature  | HocusPocus callbacks: connect, create, change.                                 |
+| `POST /api/mcp`                        | MCP token  | The CMS as an MCP server: tools over streamable HTTP.                          |
 | `PATCH /api/documents/:id`             | yes + name | Save source, slug, or status.                                                  |
 | `DELETE /api/documents/:id`            | yes + name | Delete a draft.                                                                |
 

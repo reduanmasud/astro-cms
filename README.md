@@ -202,6 +202,42 @@ Once the pull request merges, reopening the document moves it to
 > refuses to commit to a branch whose pull request is gone — committing there
 > would reopen merged history.
 
+## MCP
+
+Set `MCP_TOKEN` and the CMS also answers as an MCP server at
+`POST /api/mcp`, so a model can do what a person can do in the browser —
+and no more. Leave it unset and that route answers 404.
+
+```sh
+MCP_TOKEN=$(openssl rand -hex 32)
+```
+
+Clients authenticate with that token as a bearer token. It is deliberately
+separate from `CMS_PASSWORD`: the browser uses the password and a session
+cookie, an MCP client uses this token, and neither grants the other.
+
+```sh
+curl -s -X POST http://localhost:3000/api/mcp \
+  -H "Authorization: Bearer $MCP_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+```
+
+The tools cover the same ground as the web UI: read the project and its
+collections, list, search, create, update and delete drafts, list, upload and
+delete media, then publish — which opens or updates the same pull request the
+browser would, and stops on drift the same way.
+
+`upload_media` takes a **public URL**, not file bytes: the server fetches the
+image and stores it, then returns the public URL to embed in content. It
+refuses anything but http/https, refuses addresses that are not publicly
+routable, and does not follow redirects
+([ADR-0020](docs/adr/0020-mcp-interface.md)).
+
+Changes made through MCP are attributed to a collaborator named **MCP**, so
+they read like anyone else's in the history.
+
 ## Known limitations
 
 - The login rate limit (10 failed attempts per 15 minutes) is keyed by the TCP
