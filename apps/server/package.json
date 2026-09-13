@@ -16,6 +16,8 @@
     "@aws-sdk/client-s3": "catalog:",
     "@babel/parser": "catalog:",
     "@hono/node-server": "catalog:",
+    "@modelcontextprotocol/hono": "catalog:",
+    "@modelcontextprotocol/server": "catalog:",
     "better-sqlite3": "catalog:",
     "hono": "catalog:",
     "image-size": "catalog:",

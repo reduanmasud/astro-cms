@@ -26,6 +26,8 @@ catalog:
   micromark-extension-mdxjs: ^3.0.0
   "@eslint/js": ^10.0.1
   "@hocuspocus/extension-webhook": ^4.7.0
+  "@modelcontextprotocol/hono": ^2.0.0
+  "@modelcontextprotocol/server": ^2.0.0
   "@hocuspocus/provider": ^4.7.0
   "@hocuspocus/server": ^4.7.0
   "@tiptap/extension-collaboration": ^3.31.3
@@ -65,3 +67,5 @@ minimumReleaseAgeExclude:
   - "@babel/parser@8.0.5"
   - "@babel/types@8.0.5"
   - "@aws-sdk/client-s3@3.1131.0"
+  - "@modelcontextprotocol/server@2.0.0"
+  - "@modelcontextprotocol/hono@2.0.0"
