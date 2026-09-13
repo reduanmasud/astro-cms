@@ -50,6 +50,8 @@ export interface Config {
   readonly github: GitHubConfig;
   readonly collaboration: CollaborationConfig | null;
   readonly storage: StorageConfig | null;
+  /** Static token for the MCP endpoint. Null switches MCP off. */
+  readonly mcpToken: string | null;
 }
 
 type Env = Readonly<Record<string, string | undefined>>;
@@ -104,6 +106,7 @@ export function loadConfig(env: Env): Config {
 
   const collaboration = readCollaboration(env, problems);
   const storage = readStorage(env, problems);
+  const mcpToken = readMcpToken(env, problems);
 
   const github = {
     token: env.GITHUB_TOKEN ?? "",
@@ -126,7 +129,23 @@ export function loadConfig(env: Env): Config {
     github,
     collaboration,
     storage,
+    mcpToken,
   };
+}
+
+const MIN_MCP_TOKEN_LENGTH = 24;
+
+/** MCP's own token, unrelated to the browser password (ADR-0009). */
+function readMcpToken(env: Env, problems: string[]): string | null {
+  const token = (env.MCP_TOKEN ?? "").trim();
+  if (token === "") return null;
+  if (token.length < MIN_MCP_TOKEN_LENGTH) {
+    problems.push(
+      `MCP_TOKEN must be at least ${MIN_MCP_TOKEN_LENGTH} characters.`,
+    );
+    return null;
+  }
+  return token;
 }
 
 const COLLABORATION_KEYS = [

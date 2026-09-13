@@ -27,6 +27,7 @@ describe("loadConfig", () => {
       },
       collaboration: null,
       storage: null,
+      mcpToken: null,
     });
   });
 
@@ -192,5 +193,25 @@ describe("loadConfig", () => {
     }
 
     expect(problems).toHaveLength(7);
+  });
+
+  describe("MCP_TOKEN", () => {
+    it("is null when unset, so MCP stays off", () => {
+      expect(loadConfig(required).mcpToken).toBeNull();
+    });
+
+    it("is kept when set", () => {
+      const token = "mcp-token-that-is-long-enough-01234";
+
+      expect(loadConfig({ ...required, MCP_TOKEN: token }).mcpToken).toBe(
+        token,
+      );
+    });
+
+    it("refuses a short token", () => {
+      expect(() => loadConfig({ ...required, MCP_TOKEN: "too-short" })).toThrow(
+        /MCP_TOKEN/,
+      );
+    });
   });
 });
