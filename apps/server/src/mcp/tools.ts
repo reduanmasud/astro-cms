@@ -296,4 +296,87 @@ export function registerTools(server: McpServer, deps: McpDeps): void {
         return pr;
       }),
   );
+
+  server.registerTool(
+    "list_media",
+    {
+      description:
+        "Stored media, newest first. `unused` lists only files no draft references.",
+      inputSchema: fromJsonSchema<{
+        unused?: boolean;
+        limit?: number;
+        offset?: number;
+      }>({
+        type: "object",
+        properties: {
+          unused: { type: "boolean" },
+          limit: { type: "integer", minimum: 1, maximum: 200 },
+          offset: { type: "integer", minimum: 0 },
+        },
+      }),
+    },
+    ({ unused, limit, offset }) =>
+      run(() => deps.media.list({ unusedOnly: unused, limit, offset })),
+  );
+
+  server.registerTool(
+    "get_media",
+    {
+      description: "One media item with its public URL, size, and dimensions.",
+      inputSchema: fromJsonSchema<{ id: string }>({
+        type: "object",
+        properties: { id: { type: "string" } },
+        required: ["id"],
+      }),
+    },
+    ({ id }) => run(() => deps.media.get(id)),
+  );
+
+  server.registerTool(
+    "upload_media",
+    {
+      description:
+        "Fetch an image from a public URL, store it, and return its public URL for embedding in content. Only http/https, and only publicly routable addresses.",
+      inputSchema: fromJsonSchema<{ url: string; filename?: string }>({
+        type: "object",
+        properties: {
+          url: {
+            type: "string",
+            description: "Public http(s) URL of the image",
+          },
+          filename: {
+            type: "string",
+            description: "Optional name to store it under",
+          },
+        },
+        required: ["url"],
+      }),
+    },
+    ({ url, filename }) =>
+      run(async () => {
+        // The same inspection, dedup and storage a browser paste goes through.
+        const fetched = await deps.fetchImage(url, filename);
+        return deps.media.upload(
+          { filename: fetched.filename, bytes: fetched.bytes },
+          actor(),
+        );
+      }),
+  );
+
+  server.registerTool(
+    "delete_media",
+    {
+      description: "Delete a media file. Refused while a draft still uses it.",
+      inputSchema: fromJsonSchema<{ id: string }>({
+        type: "object",
+        properties: { id: { type: "string" } },
+        required: ["id"],
+      }),
+    },
+    ({ id }) =>
+      run(async () => {
+        await deps.media.delete(id);
+        return { deleted: id };
+      }),
+  );
 }
