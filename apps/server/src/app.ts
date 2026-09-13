@@ -21,6 +21,10 @@ import { MediaError, type MediaService } from "./services/media.ts";
 import type { MediaReferenceTracker } from "./services/media-references.ts";
 import { DocumentError, type DocumentService } from "./services/documents.ts";
 import type { DraftOpener } from "./services/draft-opener.ts";
+import type { ImageFetcher } from "./mcp/fetch-image.ts";
+import { createCmsMcpHandler } from "./mcp/server.ts";
+import { mcpRoutes } from "./routes/mcp.ts";
+import type { CollaboratorService } from "./services/collaborators.ts";
 import type { HealthService } from "./services/health.ts";
 import { PublishError, type PublishService } from "./services/publish.ts";
 import type { RepositoryService } from "./services/repository.ts";
@@ -37,9 +41,14 @@ export interface AppDeps {
   media: MediaService;
   mediaReferences: MediaReferenceTracker;
   sessions: SessionService;
+  collaborators: CollaboratorService;
   loginLimiter: RateLimiter;
   sessionSecret: string;
   cookieSecure: boolean;
+  /** Fetches an image by URL for MCP's upload_media. */
+  fetchImage: ImageFetcher;
+  /** Null switches the MCP endpoint off. */
+  mcpToken: string | null;
 }
 
 /**
@@ -69,19 +78,32 @@ export function createApp({
   media,
   mediaReferences,
   sessions,
+  collaborators,
   loginLimiter,
   sessionSecret,
   cookieSecure,
+  fetchImage,
+  mcpToken,
 }: AppDeps): Hono<AuthEnv> {
   const app = new Hono<AuthEnv>();
   const cookie = { secret: sessionSecret, secure: cookieSecure };
   const requireSession = authenticate(sessions, cookie);
 
-  app.use("/api/*", csrf());
+  // MCP is not browser-driven: it carries a bearer token, so neither the
+  // cookie nor the CSRF check applies to it. The session exemption is
+  // required (an MCP client has no cookie); the CSRF one is defence in depth,
+  // since csrf() already allows the application/json MCP sends.
+  const isMcp = (path: string): boolean => path === "/api/mcp";
+
+  app.use(
+    "/api/*",
+    except((c) => isMcp(c.req.path), csrf()),
+  );
   app.use(
     "/api/*",
     except(
-      (c) => PUBLIC_ROUTES.has(`${c.req.method} ${c.req.path}`),
+      (c) =>
+        PUBLIC_ROUTES.has(`${c.req.method} ${c.req.path}`) || isMcp(c.req.path),
       requireSession,
     ),
   );
@@ -97,6 +119,22 @@ export function createApp({
     documentRoutes({ documents, drafts, collab, publish }),
   );
   app.route("/api/media", mediaRoutes({ media, references: mediaReferences }));
+  app.route(
+    "/api/mcp",
+    mcpRoutes({
+      token: mcpToken,
+      handler: createCmsMcpHandler({
+        project,
+        documents,
+        drafts,
+        publish,
+        media,
+        repository,
+        collaborators,
+        fetchImage,
+      }),
+    }),
+  );
   app.route("/api/session", sessionRoutes({ sessions, loginLimiter, cookie }));
   app.all("/api/*", (c) => apiError(c, 404, "not_found", "No such API route."));
 

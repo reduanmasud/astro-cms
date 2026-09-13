@@ -43,6 +43,18 @@ export const TEST_FILES: Record<string, string> = {
   "src/content/blog/hello.md": "---\ntitle: Hello\n---\n\n# Hello\n",
 };
 
+export const TEST_MCP_TOKEN = "mcp-test-token-that-is-long-enough";
+
+/** A 1x1 PNG, so upload_media can be tested without the network. */
+export const TEST_IMAGE_BYTES = new Uint8Array([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49,
+  0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06,
+  0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4, 0x89, 0x00, 0x00, 0x00, 0x0a, 0x49, 0x44,
+  0x41, 0x54, 0x78, 0x9c, 0x63, 0x00, 0x01, 0x00, 0x00, 0x05, 0x00, 0x01, 0x0d,
+  0x0a, 0x2d, 0xb4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42,
+  0x60, 0x82,
+]);
+
 export const TEST_JWT_SECRET = "collab-jwt-secret-that-is-long-enough";
 export const TEST_WEBHOOK_SECRET = "collab-webhook-secret-long-enough!!";
 
@@ -52,6 +64,8 @@ export interface TestAppOptions {
   collaborationUrl?: string;
   /** Set false to run without media storage. */
   mediaEnabled?: boolean;
+  /** Pass a token to switch the MCP endpoint on. */
+  mcpToken?: string;
   loginLimit?: number;
   secret?: string;
   files?: Record<string, string>;
@@ -125,8 +139,15 @@ export function buildTestApp(options: TestAppOptions = {}): TestApp {
       limit: options.loginLimit ?? 100,
       windowMs: 60_000,
     }),
+    collaborators,
     sessionSecret: options.secret ?? TEST_SECRET,
     cookieSecure: false,
+    fetchImage: (_url, filename) =>
+      Promise.resolve({
+        bytes: TEST_IMAGE_BYTES,
+        filename: filename ?? "fetched.png",
+      }),
+    mcpToken: options.mcpToken ?? null,
   });
   return { app, db, github, documents, mediaStorage };
 }
@@ -171,4 +192,43 @@ export function requestJson(
       body: body === undefined ? undefined : JSON.stringify(body),
     }),
   );
+}
+
+export interface McpResponse {
+  status: number;
+  body?: {
+    result?: {
+      tools?: { name: string; inputSchema: unknown }[];
+      content?: { type: string; text: string }[];
+      isError?: boolean;
+    };
+    error?: { code: number; message: string };
+  };
+}
+
+/** One JSON-RPC call against /api/mcp. Responses are server-sent events. */
+export async function mcpCall(
+  app: App,
+  token: string,
+  method: string,
+  params: unknown,
+): Promise<McpResponse> {
+  const response = await app.request("/api/mcp", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Accept: "application/json, text/event-stream",
+    },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+  });
+  const text = await response.text();
+  const line = text.split("\n").find((row) => row.startsWith("data:"));
+  return {
+    status: response.status,
+    body:
+      line === undefined
+        ? undefined
+        : (JSON.parse(line.slice(5).trim()) as McpResponse["body"]),
+  };
 }

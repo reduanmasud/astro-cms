@@ -16,6 +16,7 @@ import { createDocumentService } from "./services/documents.ts";
 import { createDraftOpener } from "./services/draft-opener.ts";
 import { createMediaService } from "./services/media.ts";
 import { createMediaReferenceTracker } from "./services/media-references.ts";
+import { createImageFetcher } from "./mcp/fetch-image.ts";
 import { createHealthService } from "./services/health.ts";
 import { createPublishService } from "./services/publish.ts";
 import {
@@ -85,8 +86,11 @@ async function main(): Promise<void> {
       limit: LOGIN_ATTEMPTS_PER_WINDOW,
       windowMs: LOGIN_WINDOW_MS,
     }),
+    collaborators,
     sessionSecret: config.sessionSecret,
     cookieSecure: config.cookieSecure,
+    fetchImage: createImageFetcher(),
+    mcpToken: config.mcpToken,
   });
 
   const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
