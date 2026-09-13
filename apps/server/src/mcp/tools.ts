@@ -3,6 +3,7 @@ import {
   type CallToolResult,
   type McpServer,
 } from "@modelcontextprotocol/server";
+import type { CollaboratorRef } from "../documents/model.ts";
 import type { AstroProjectService } from "../services/astro-project.ts";
 import type { CollaboratorService } from "../services/collaborators.ts";
 import type { DocumentService } from "../services/documents.ts";
@@ -50,7 +51,13 @@ async function run(work: () => unknown): Promise<CallToolResult> {
 
 const NO_ARGUMENTS = { type: "object", properties: {} } as const;
 
+/** MCP has no display name, so its writes are attributed to one fixed row. */
+const MCP_COLLABORATOR = "MCP";
+
 export function registerTools(server: McpServer, deps: McpDeps): void {
+  const actor = (): CollaboratorRef =>
+    deps.collaborators.claim(MCP_COLLABORATOR);
+
   server.registerTool(
     "get_project",
     {
@@ -153,5 +160,140 @@ export function registerTools(server: McpServer, deps: McpDeps): void {
       }),
     },
     ({ id }) => run(() => deps.documents.get(id)),
+  );
+
+  server.registerTool(
+    "create_document",
+    {
+      description:
+        "Open a repository path as a CMS draft, copying the file from the base branch when it exists. GitHub is only read.",
+      inputSchema: fromJsonSchema<{ collection: string; path: string }>({
+        type: "object",
+        properties: {
+          collection: {
+            type: "string",
+            description: "Collection name, e.g. blog",
+          },
+          path: {
+            type: "string",
+            description: "Repository path, e.g. src/content/blog/hello.md",
+          },
+        },
+        required: ["collection", "path"],
+      }),
+    },
+    ({ collection, path }) =>
+      run(() => deps.drafts.open({ collection, path }, actor())),
+  );
+
+  server.registerTool(
+    "update_document",
+    {
+      description:
+        "Save a draft's Markdown/MDX source, slug, or status. Nothing reaches GitHub until it is published.",
+      inputSchema: fromJsonSchema<{
+        id: string;
+        source?: string;
+        slug?: string;
+        status?: string;
+      }>({
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          source: {
+            type: "string",
+            description: "The whole file, frontmatter included",
+          },
+          slug: { type: "string" },
+          status: { type: "string", enum: ["draft", "in_review", "published"] },
+        },
+        required: ["id"],
+      }),
+    },
+    ({ id, source, slug, status }) =>
+      run(() =>
+        deps.documents.update(
+          id,
+          { source, slug, status } as Parameters<DocumentService["update"]>[1],
+          actor(),
+        ),
+      ),
+  );
+
+  server.registerTool(
+    "delete_document",
+    {
+      description: "Delete a CMS draft. GitHub is not touched.",
+      inputSchema: fromJsonSchema<{ id: string }>({
+        type: "object",
+        properties: { id: { type: "string" } },
+        required: ["id"],
+      }),
+    },
+    ({ id }) =>
+      run(() => {
+        deps.documents.delete(id);
+        return { deleted: id };
+      }),
+  );
+
+  server.registerTool(
+    "publish_document",
+    {
+      description:
+        "Commit the draft to its CMS branch and open or update its pull request. Stops if the base branch moved.",
+      inputSchema: fromJsonSchema<{ id: string }>({
+        type: "object",
+        properties: { id: { type: "string" } },
+        required: ["id"],
+      }),
+    },
+    ({ id }) => run(() => deps.publish.publish(id, actor())),
+  );
+
+  server.registerTool(
+    "resync_document",
+    {
+      description:
+        "Adopt the current base-branch commit as this draft's baseline, after reviewing the difference.",
+      inputSchema: fromJsonSchema<{ id: string }>({
+        type: "object",
+        properties: { id: { type: "string" } },
+        required: ["id"],
+      }),
+    },
+    ({ id }) => run(() => deps.publish.resync(id)),
+  );
+
+  server.registerTool(
+    "get_publish_status",
+    {
+      description:
+        "Ask GitHub about this draft's pull request and update its status.",
+      inputSchema: fromJsonSchema<{ id: string }>({
+        type: "object",
+        properties: { id: { type: "string" } },
+        required: ["id"],
+      }),
+    },
+    ({ id }) => run(() => deps.publish.refresh(id)),
+  );
+
+  server.registerTool(
+    "get_pull_request",
+    {
+      description: "One pull request by number.",
+      inputSchema: fromJsonSchema<{ number: number }>({
+        type: "object",
+        properties: { number: { type: "integer", minimum: 1 } },
+        required: ["number"],
+      }),
+    },
+    ({ number }) =>
+      run(async () => {
+        const pr = await deps.repository.getPullRequest(number);
+        if (!pr) throw new Error(`No pull request ${String(number)}.`);
+        return pr;
+      }),
   );
 }
