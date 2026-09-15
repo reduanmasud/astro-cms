@@ -15,7 +15,9 @@ import { createCollaboratorService } from "./services/collaborators.ts";
 import { createDocumentService } from "./services/documents.ts";
 import { createDraftOpener } from "./services/draft-opener.ts";
 import { createMediaService } from "./services/media.ts";
+import { createMediaGitScanner } from "./services/media-git-scanner.ts";
 import { createMediaReferenceTracker } from "./services/media-references.ts";
+import { createMediaCollector, startCollecting } from "./services/media-gc.ts";
 import { createImageFetcher } from "./mcp/fetch-image.ts";
 import { createHealthService } from "./services/health.ts";
 import { createPublishService } from "./services/publish.ts";
@@ -64,6 +66,42 @@ async function main(): Promise<void> {
     publicUrl: config.storage?.publicUrl ?? null,
   });
 
+  const HOUR_MS = 60 * 60 * 1000;
+  const DAY_MS = 24 * HOUR_MS;
+  const mediaCollector =
+    config.storage === null
+      ? null
+      : createMediaCollector({
+          media,
+          repository: mediaRepository,
+          references: mediaReferences,
+          scanner: createMediaGitScanner({
+            repository: mediaRepository,
+            git: repository,
+            project,
+            publicUrl: config.storage.publicUrl,
+            baseBranch: config.github.baseBranch,
+          }),
+          graceMs: config.mediaGcGraceDays * DAY_MS,
+        });
+  const collecting =
+    mediaCollector === null || config.mediaGcIntervalHours === 0
+      ? undefined
+      : startCollecting({
+          collect: () => mediaCollector.collect(),
+          intervalMs: config.mediaGcIntervalHours * HOUR_MS,
+          onSweep: (summary) => {
+            if (summary.deleted > 0 || summary.failed > 0) {
+              console.info(
+                `Media collection: deleted ${String(summary.deleted)}, failed ${String(summary.failed)}`,
+              );
+            }
+          },
+          onError: (error: unknown) => {
+            console.error("Media collection failed:", error);
+          },
+        });
+
   const app = createApp({
     health: createHealthService({ db }),
     repository,
@@ -98,6 +136,7 @@ async function main(): Promise<void> {
   });
 
   const shutdown = () => {
+    collecting?.();
     server.close(() => {
       db.close();
       process.exit(0);

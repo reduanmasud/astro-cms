@@ -52,6 +52,10 @@ export interface Config {
   readonly storage: StorageConfig | null;
   /** Static token for the MCP endpoint. Null switches MCP off. */
   readonly mcpToken: string | null;
+  /** Hours between media collection sweeps. 0 switches collection off. */
+  readonly mediaGcIntervalHours: number;
+  /** Days a file must be unused before it can be deleted. */
+  readonly mediaGcGraceDays: number;
 }
 
 type Env = Readonly<Record<string, string | undefined>>;
@@ -107,6 +111,18 @@ export function loadConfig(env: Env): Config {
   const collaboration = readCollaboration(env, problems);
   const storage = readStorage(env, problems);
   const mcpToken = readMcpToken(env, problems);
+  const mediaGcIntervalHours = readWholeNumber(
+    env,
+    "MEDIA_GC_INTERVAL_HOURS",
+    6,
+    problems,
+  );
+  const mediaGcGraceDays = readWholeNumber(
+    env,
+    "MEDIA_GC_GRACE_DAYS",
+    7,
+    problems,
+  );
 
   const github = {
     token: env.GITHUB_TOKEN ?? "",
@@ -130,6 +146,8 @@ export function loadConfig(env: Env): Config {
     collaboration,
     storage,
     mcpToken,
+    mediaGcIntervalHours,
+    mediaGcGraceDays,
   };
 }
 
@@ -146,6 +164,23 @@ function readMcpToken(env: Env, problems: string[]): string | null {
     return null;
   }
   return token;
+}
+
+/** A whole number of `unit`s, or the default when the value is absent. */
+function readWholeNumber(
+  env: Env,
+  name: string,
+  fallback: number,
+  problems: string[],
+): number {
+  const raw = (env[name] ?? "").trim();
+  if (raw === "") return fallback;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 0) {
+    problems.push(`${name} must be a whole number of 0 or more.`);
+    return fallback;
+  }
+  return value;
 }
 
 const COLLABORATION_KEYS = [

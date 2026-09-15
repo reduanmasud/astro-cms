@@ -28,6 +28,8 @@ describe("loadConfig", () => {
       collaboration: null,
       storage: null,
       mcpToken: null,
+      mediaGcIntervalHours: 6,
+      mediaGcGraceDays: 7,
     });
   });
 
@@ -212,6 +214,39 @@ describe("loadConfig", () => {
       expect(() => loadConfig({ ...required, MCP_TOKEN: "too-short" })).toThrow(
         /MCP_TOKEN/,
       );
+    });
+  });
+
+  describe("media collection", () => {
+    it("defaults to six hours and seven days", () => {
+      const config = loadConfig(required);
+
+      expect(config.mediaGcIntervalHours).toBe(6);
+      expect(config.mediaGcGraceDays).toBe(7);
+    });
+
+    it("reads explicit values", () => {
+      const config = loadConfig({
+        ...required,
+        MEDIA_GC_INTERVAL_HOURS: "12",
+        MEDIA_GC_GRACE_DAYS: "30",
+      });
+
+      expect(config.mediaGcIntervalHours).toBe(12);
+      expect(config.mediaGcGraceDays).toBe(30);
+    });
+
+    it("lets zero hours switch collection off", () => {
+      expect(
+        loadConfig({ ...required, MEDIA_GC_INTERVAL_HOURS: "0" })
+          .mediaGcIntervalHours,
+      ).toBe(0);
+    });
+
+    it.each(["-1", "abc", "1.5"])("rejects MEDIA_GC_GRACE_DAYS=%s", (value) => {
+      expect(() =>
+        loadConfig({ ...required, MEDIA_GC_GRACE_DAYS: value }),
+      ).toThrow(/MEDIA_GC_GRACE_DAYS/);
     });
   });
 });
