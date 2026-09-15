@@ -43,6 +43,12 @@ export interface MediaQuery {
   readonly offset: number;
 }
 
+/** One place in the repository where a media file is mentioned. */
+export interface GitReference {
+  readonly mediaId: string;
+  readonly path: string;
+}
+
 export interface MediaRepository {
   insert(record: NewMediaRecord): void;
   findById(id: string): MediaRecord | undefined;
@@ -54,6 +60,14 @@ export interface MediaRepository {
   setReferences(documentId: string, mediaIds: readonly string[]): void;
   /** Stamps or clears `unused_since` so unused files can age out. */
   refreshUnusedMarkers(now: number): void;
+  /** Replaces every reference recorded for one git ref. */
+  setGitReferences(ref: string, references: readonly GitReference[]): void;
+  /** Forgets a ref entirely, e.g. a branch that was merged and deleted. */
+  deleteGitReferences(ref: string): void;
+  /** Refs that currently have references recorded. */
+  listGitRefs(): string[];
+  /** Unused at or before `before`, and still unreferenced now. */
+  findDeletable(before: number): MediaRecord[];
 }
 
 interface MediaRow {
@@ -72,11 +86,19 @@ interface MediaRow {
   reference_count: number;
 }
 
+/** A file is referenced when any draft or any git ref mentions it. */
+const REFERENCED = (alias: string): string => `(
+    EXISTS (SELECT 1 FROM media_references r WHERE r.media_id = ${alias})
+    OR EXISTS (SELECT 1 FROM media_git_references g WHERE g.media_id = ${alias})
+  )`;
+
 const COLUMNS = `
   m.id, m.object_key, m.filename, m.content_type, m.size, m.sha256,
   m.width, m.height, m.uploaded_by, c.name AS uploaded_by_name,
   m.uploaded_at, m.unused_since,
-  (SELECT COUNT(*) FROM media_references r WHERE r.media_id = m.id) AS reference_count`;
+  (SELECT COUNT(*) FROM media_references r WHERE r.media_id = m.id)
+  + (SELECT COUNT(*) FROM media_git_references g WHERE g.media_id = m.id)
+    AS reference_count`;
 
 const FROM = `
   FROM media m
@@ -104,16 +126,29 @@ export function createMediaRepository(db: Db): MediaRepository {
   const insertReference = db.prepare(
     "INSERT OR IGNORE INTO media_references (media_id, document_id) VALUES (?, ?)",
   );
+  const deleteGitRef = db.prepare(
+    "DELETE FROM media_git_references WHERE ref = ?",
+  );
+  const insertGitRef = db.prepare(
+    "INSERT OR IGNORE INTO media_git_references (media_id, ref, path) VALUES (?, ?, ?)",
+  );
+  const selectGitRefs = db
+    .prepare<[], string>("SELECT DISTINCT ref FROM media_git_references")
+    .pluck();
+  const selectDeletable = db.prepare<[number], MediaRow>(`
+    SELECT ${COLUMNS} ${FROM}
+    WHERE m.unused_since IS NOT NULL AND m.unused_since <= ?
+      AND NOT ${REFERENCED("m.id")}
+    ORDER BY m.unused_since ASC
+  `);
   // A file in use again loses its mark; one that fell out of use gets stamped.
   const clearMarkers = db.prepare(`
     UPDATE media SET unused_since = NULL
-    WHERE unused_since IS NOT NULL
-      AND EXISTS (SELECT 1 FROM media_references r WHERE r.media_id = media.id)
+    WHERE unused_since IS NOT NULL AND ${REFERENCED("media.id")}
   `);
   const stampMarkers = db.prepare(`
     UPDATE media SET unused_since = ?
-    WHERE unused_since IS NULL
-      AND NOT EXISTS (SELECT 1 FROM media_references r WHERE r.media_id = media.id)
+    WHERE unused_since IS NULL AND NOT ${REFERENCED("media.id")}
   `);
 
   return {
@@ -143,9 +178,7 @@ export function createMediaRepository(db: Db): MediaRepository {
     },
 
     list({ unusedOnly, limit, offset }) {
-      const where = unusedOnly
-        ? "WHERE NOT EXISTS (SELECT 1 FROM media_references r WHERE r.media_id = m.id)"
-        : "";
+      const where = unusedOnly ? `WHERE NOT ${REFERENCED("m.id")}` : "";
       return db
         .prepare<[number, number], MediaRow>(
           `SELECT ${COLUMNS} ${FROM} ${where} ORDER BY m.uploaded_at DESC, m.rowid DESC LIMIT ? OFFSET ?`,
@@ -171,6 +204,26 @@ export function createMediaRepository(db: Db): MediaRepository {
         clearMarkers.run();
         stampMarkers.run(now);
       })();
+    },
+
+    setGitReferences(ref, references) {
+      db.transaction(() => {
+        deleteGitRef.run(ref);
+        for (const reference of references)
+          insertGitRef.run(reference.mediaId, ref, reference.path);
+      })();
+    },
+
+    deleteGitReferences(ref) {
+      deleteGitRef.run(ref);
+    },
+
+    listGitRefs() {
+      return selectGitRefs.all();
+    },
+
+    findDeletable(before) {
+      return selectDeletable.all(before).map(toRecord);
     },
   };
 }

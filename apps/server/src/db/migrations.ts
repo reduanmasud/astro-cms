@@ -78,4 +78,16 @@ export const migrations: readonly string[] = [
 
   CREATE INDEX media_references_document ON media_references (document_id);
   `,
+  // 4: references found in the repository, not in a draft
+  //    (docs/superpowers/specs/2026-09-15-media-gc-design.md)
+  `
+  CREATE TABLE media_git_references (
+    media_id TEXT NOT NULL REFERENCES media (id) ON DELETE CASCADE,
+    ref      TEXT NOT NULL,
+    path     TEXT NOT NULL,
+    PRIMARY KEY (media_id, ref, path)
+  ) STRICT;
+
+  CREATE INDEX media_git_references_ref ON media_git_references (ref);
+  `,
 ];

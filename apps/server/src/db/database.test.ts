@@ -18,6 +18,7 @@ describe("openDatabase", () => {
       "collaborators",
       "documents",
       "media",
+      "media_git_references",
       "media_references",
       "sessions",
     ]);
