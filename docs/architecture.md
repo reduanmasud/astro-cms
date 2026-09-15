@@ -135,9 +135,13 @@ Collaboration is live editing, presence, and cursors only
 
 1. Pasting or dropping an image uploads it through the server to the bucket.
 2. The editor inserts the returned URL.
-3. A periodic job recomputes references from drafts, open CMS PRs, and `main`.
-   Media with zero references is marked unused, kept 7 days, rechecked, then
-   deleted ([ADR-0008](adr/0008-media-storage-and-gc.md)).
+3. A sweep, on a timer, recomputes references from drafts, the base branch,
+   and every open CMS branch; media with none is stamped unused. Files
+   stamped unused past the grace period are deleted, but only if that
+   sweep's recompute and rescan both succeeded — one that fails to read
+   drafts or the repository deletes nothing at all
+   ([ADR-0008](adr/0008-media-storage-and-gc.md),
+   [ADR-0021](adr/0021-media-collection.md)).
 
 ## GitHub integration
 

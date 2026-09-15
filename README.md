@@ -173,10 +173,21 @@ curl -b cookies.txt -X DELETE -H 'Sec-Fetch-Site: same-origin' \
 ```
 
 The CMS tracks which drafts use which file and refuses to delete one that is
-still referenced. Nothing is deleted automatically yet; the collector in
-[ADR-0008](docs/adr/0008-media-storage-and-gc.md) arrives with publishing.
-Storage credentials never reach the browser
+still referenced. Storage credentials never reach the browser
 ([ADR-0017](docs/adr/0017-media-storage.md)).
+
+Unused files are deleted automatically, `MEDIA_GC_GRACE_DAYS` (default 7)
+after they were last seen with no reference, and only once no draft, no open
+CMS pull request, and not the base branch refers to them any more. A sweep
+runs every `MEDIA_GC_INTERVAL_HOURS` (default 6); set it to `0` to switch
+collection off. Collection never starts unless media storage is configured.
+
+Only `.md` and `.mdx` files under each collection's content path are
+scanned for references. A media URL that only appears somewhere else — an
+`.astro` component, for instance — is never seen by the scanner and can
+eventually be collected even while still in use there. Know this before
+turning collection on
+([ADR-0021](docs/adr/0021-media-collection.md)).
 
 ## Publishing
 
