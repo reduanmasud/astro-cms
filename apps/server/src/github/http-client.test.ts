@@ -366,7 +366,7 @@ describe("HTTP GitHub client", () => {
 
     it("lists open pull requests", async () => {
       const { client } = mockGitHub({
-        [`GET ${REPO}/pulls?state=open&per_page=100`]: {
+        [`GET ${REPO}/pulls?state=open&per_page=100&page=1`]: {
           status: 200,
           body: [pull, { ...pull, number: 8 }],
         },
@@ -376,6 +376,32 @@ describe("HTTP GitHub client", () => {
 
       expect(pulls.map((pr) => pr.number)).toEqual([7, 8]);
       expect(pulls[0]).toEqual(expected);
+    });
+
+    it("keeps paging past a full page of open pull requests", async () => {
+      // A caller treats a branch missing from this list as merged, so the
+      // 101st open pull request must not fall off the end.
+      const page = (from: number, count: number) =>
+        Array.from({ length: count }, (_, index) => ({
+          ...pull,
+          number: from + index,
+        }));
+      const { client, calls } = mockGitHub({
+        [`GET ${REPO}/pulls?state=open&per_page=100&page=1`]: {
+          status: 200,
+          body: page(1, 100),
+        },
+        [`GET ${REPO}/pulls?state=open&per_page=100&page=2`]: {
+          status: 200,
+          body: page(101, 3),
+        },
+      });
+
+      const pulls = await client.listOpenPullRequests();
+
+      expect(pulls).toHaveLength(103);
+      expect(pulls.at(-1)?.number).toBe(103);
+      expect(calls).toHaveLength(2);
     });
 
     it("reads a pull request by number and reports merges", async () => {

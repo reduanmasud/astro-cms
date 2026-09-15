@@ -20,6 +20,10 @@ type Json = Record<string, unknown>;
 const API_VERSION = "2022-11-28";
 const DEFAULT_TIMEOUT_MS = 15_000;
 const FILE_MODE = "100644";
+/** GitHub's maximum page size for /pulls. */
+const PULL_REQUEST_PAGE_SIZE = 100;
+/** A stop for a runaway loop; hitting it is an error, never a silent truncation. */
+const MAX_PULL_REQUEST_PAGES = 20;
 
 /** GitHubClient backed by the GitHub REST API. The token never leaves this module. */
 export function createHttpGitHubClient({
@@ -205,9 +209,25 @@ export function createHttpGitHubClient({
     },
 
     async listOpenPullRequests() {
-      const data = await request("GET", "/pulls?state=open&per_page=100");
-      if (!Array.isArray(data)) throw unexpected("pulls");
-      return data.map(toPullRequest);
+      // Every page: callers treat a branch missing from this list as merged,
+      // so a truncated list would drop live references.
+      const pulls: PullRequest[] = [];
+      for (let page = 1; page <= MAX_PULL_REQUEST_PAGES; page++) {
+        const query = new URLSearchParams({
+          state: "open",
+          per_page: String(PULL_REQUEST_PAGE_SIZE),
+          page: String(page),
+        });
+        const data = await request("GET", `/pulls?${query.toString()}`);
+        if (!Array.isArray(data)) throw unexpected("pulls");
+        pulls.push(...data.map(toPullRequest));
+        // A short page is the last page.
+        if (data.length < PULL_REQUEST_PAGE_SIZE) return pulls;
+      }
+      throw new GitHubError(
+        0,
+        `More than ${String(MAX_PULL_REQUEST_PAGES * PULL_REQUEST_PAGE_SIZE)} open pull requests; refusing to return a truncated list.`,
+      );
     },
 
     async getPullRequest(number) {

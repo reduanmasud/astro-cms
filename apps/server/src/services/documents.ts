@@ -14,7 +14,8 @@ import { isSafeRepositoryPath } from "../github/names.ts";
 
 export const MAX_SOURCE_BYTES = 1024 * 1024;
 const DEFAULT_PAGE_SIZE = 50;
-const MAX_PAGE_SIZE = 200;
+/** The largest page `list` will return; a full pass has to page with it. */
+export const MAX_PAGE_SIZE = 200;
 const MAX_SEARCH_LENGTH = 200;
 
 export type DocumentErrorCode =

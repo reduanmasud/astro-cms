@@ -91,9 +91,23 @@ async function main(): Promise<void> {
           collect: () => mediaCollector.collect(),
           intervalMs: config.mediaGcIntervalHours * HOUR_MS,
           onSweep: (summary) => {
-            if (summary.deleted > 0 || summary.failed > 0) {
+            // A refused sweep deletes nothing and never throws, so it would
+            // otherwise be invisible: log it, or a permanently broken scan
+            // looks exactly like a quiet one (ADR-0021).
+            if (summary.skipped) {
+              console.error(
+                `Media collection deleted nothing (${summary.reason ?? "unknown"}):`,
+                summary.error,
+              );
+              return;
+            }
+            if (
+              summary.deleted > 0 ||
+              summary.failed > 0 ||
+              summary.inUse > 0
+            ) {
               console.info(
-                `Media collection: deleted ${String(summary.deleted)}, failed ${String(summary.failed)}`,
+                `Media collection: deleted ${String(summary.deleted)}, failed ${String(summary.failed)}, still in use ${String(summary.inUse)}`,
               );
             }
           },

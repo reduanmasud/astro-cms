@@ -176,11 +176,14 @@ The CMS tracks which drafts use which file and refuses to delete one that is
 still referenced. Storage credentials never reach the browser
 ([ADR-0017](docs/adr/0017-media-storage.md)).
 
-Unused files are deleted automatically, `MEDIA_GC_GRACE_DAYS` (default 7)
-after they were last seen with no reference, and only once no draft, no open
-CMS pull request, and not the base branch refers to them any more. A sweep
-runs every `MEDIA_GC_INTERVAL_HOURS` (default 6); set it to `0` to switch
-collection off. Collection never starts unless media storage is configured.
+Unused files are deleted automatically, `MEDIA_GC_GRACE_DAYS` (default 7,
+minimum 1) after they were last seen with no reference, and only once no
+draft, no open CMS pull request, and not the base branch refers to them any
+more. A sweep runs every `MEDIA_GC_INTERVAL_HOURS` (default 6); set it to
+`0` to switch collection off. Collection never starts unless media storage
+is configured. A sweep that cannot establish what is referenced — GitHub
+unreachable, no content collections found, the base branch missing — deletes
+nothing and logs why.
 
 Only `.md` and `.mdx` files under each collection's content path are
 scanned for references. A media URL that only appears somewhere else — an

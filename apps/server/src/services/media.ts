@@ -66,7 +66,7 @@ export interface MediaService {
   ): Promise<UploadedMedia>;
   get(id: string): MediaItem;
   list(options?: ListMediaOptions): MediaItem[];
-  /** Removes the object and its metadata. Refuses while a draft still uses it. */
+  /** Removes the object and its metadata. Refuses while anything still references it. */
   delete(id: string): Promise<void>;
   /** Asks storage whether the object is really there. */
   verify(id: string): Promise<ObjectHead | undefined>;
@@ -183,7 +183,7 @@ export function createMediaService({
       if (record.referenceCount > 0) {
         throw new MediaError(
           "in_use",
-          `This file is used by ${record.referenceCount} draft(s). Remove it from them first.`,
+          `This file is used in ${String(record.referenceCount)} place(s) — drafts, or published content. Remove it from them first.`,
         );
       }
       // Storage first: a leftover row is easier to explain than a dead URL.

@@ -19,7 +19,7 @@ export interface MediaRecord {
   readonly uploadedAt: number;
   /** When the file was first seen with no references, or null while in use. */
   readonly unusedSince: number | null;
-  /** Drafts that currently use it. */
+  /** Places that currently use it: drafts plus git refs (ADR-0021). */
   readonly referenceCount: number;
 }
 

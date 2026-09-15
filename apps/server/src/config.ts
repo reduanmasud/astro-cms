@@ -54,7 +54,7 @@ export interface Config {
   readonly mcpToken: string | null;
   /** Hours between media collection sweeps. 0 switches collection off. */
   readonly mediaGcIntervalHours: number;
-  /** Days a file must be unused before it can be deleted. */
+  /** Days a file must be unused before it can be deleted. At least 1. */
   readonly mediaGcGraceDays: number;
 }
 
@@ -117,11 +117,14 @@ export function loadConfig(env: Env): Config {
     6,
     problems,
   );
+  // At least a day: a zero grace period would let a file stamped unused in
+  // one sweep be deleted by that same sweep, which ADR-0021 rejects.
   const mediaGcGraceDays = readWholeNumber(
     env,
     "MEDIA_GC_GRACE_DAYS",
     7,
     problems,
+    1,
   );
 
   const github = {
@@ -166,18 +169,21 @@ function readMcpToken(env: Env, problems: string[]): string | null {
   return token;
 }
 
-/** A whole number of `unit`s, or the default when the value is absent. */
+/** A whole number of at least `minimum`, or the default when absent. */
 function readWholeNumber(
   env: Env,
   name: string,
   fallback: number,
   problems: string[],
+  minimum = 0,
 ): number {
   const raw = (env[name] ?? "").trim();
   if (raw === "") return fallback;
   const value = Number(raw);
-  if (!Number.isInteger(value) || value < 0) {
-    problems.push(`${name} must be a whole number of 0 or more.`);
+  if (!Number.isInteger(value) || value < minimum) {
+    problems.push(
+      `${name} must be a whole number of ${String(minimum)} or more.`,
+    );
     return fallback;
   }
   return value;

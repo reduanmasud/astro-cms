@@ -135,16 +135,60 @@ describe("media collector", () => {
     expect(storage.keys()).toHaveLength(1);
   });
 
-  it("deletes nothing at all when the scan fails", async () => {
+  it("deletes nothing at all when the scan fails, and says why", async () => {
     await upload("a");
     repository.refreshUnusedMarkers(now - 30 * DAY);
+    const failure = new Error("GitHub is unreachable");
     const broken: MediaGitScanner = {
-      scan: () => Promise.reject(new Error("GitHub is unreachable")),
+      scan: () => Promise.reject(failure),
     };
 
     const summary = await build(broken).collect();
 
-    expect(summary).toMatchObject({ deleted: 0, skipped: true });
+    expect(summary).toMatchObject({
+      deleted: 0,
+      skipped: true,
+      reason: "scan_failed",
+      error: failure,
+    });
+    expect(storage.keys()).toHaveLength(1);
+  });
+
+  it("counts a file that gained a reference since the recheck apart from a failure", async () => {
+    const id = await upload("a");
+    repository.refreshUnusedMarkers(now - 30 * DAY);
+    // A reference lands between findDeletable and the delete. That is the
+    // second safety net firing, not a storage problem.
+    const racing: MediaRepository = {
+      ...repository,
+      findDeletable(before) {
+        const records = repository.findDeletable(before);
+        repository.setGitReferences("main", [
+          { mediaId: id, path: "src/content/blog/hello.md" },
+        ]);
+        return records;
+      },
+    };
+    const collector = createMediaCollector({
+      media,
+      repository: racing,
+      references: createMediaReferenceTracker({
+        repository: racing,
+        documents: createDocumentService({
+          repository: createDocumentRepository(db),
+        }),
+        publicUrl: PUBLIC_URL,
+        now: () => now,
+      }),
+      scanner: quietScanner,
+      graceMs: 7 * DAY,
+      now: () => now,
+    });
+
+    const summary = await collector.collect();
+
+    expect(summary).toMatchObject({ deleted: 0, failed: 0, inUse: 1 });
+    expect(repository.findById(id)).toBeDefined();
     expect(storage.keys()).toHaveLength(1);
   });
 
@@ -180,6 +224,7 @@ describe("media collector", () => {
     await expect(collector.collect()).resolves.toMatchObject({
       deleted: 0,
       skipped: true,
+      reason: "storage_disabled",
     });
   });
 });

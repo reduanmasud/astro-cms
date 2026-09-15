@@ -248,5 +248,15 @@ describe("loadConfig", () => {
         loadConfig({ ...required, MEDIA_GC_GRACE_DAYS: value }),
       ).toThrow(/MEDIA_GC_GRACE_DAYS/);
     });
+
+    it("rejects a zero grace period", () => {
+      // Zero would make a file stamped unused deletable by the same sweep.
+      expect(() =>
+        loadConfig({ ...required, MEDIA_GC_GRACE_DAYS: "0" }),
+      ).toThrow(/MEDIA_GC_GRACE_DAYS must be a whole number of 1 or more/);
+      expect(
+        loadConfig({ ...required, MEDIA_GC_GRACE_DAYS: "1" }).mediaGcGraceDays,
+      ).toBe(1);
+    });
   });
 });

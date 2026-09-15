@@ -90,6 +90,26 @@ describe("media reference tracking", () => {
     expect(repository.findById("m1")?.referenceCount).toBe(2);
   });
 
+  it("scans every draft, not just the first page", () => {
+    // 200 is the largest page documents.list will return, so a single
+    // unpaged call would never reach the draft that uses this file.
+    // Listing is newest first, so the oldest draft is the one that only a
+    // second page reaches.
+    const url = media("m1", "media/ab/one.png");
+    draft("src/content/blog/oldest.md", `![](${url})`);
+    for (let index = 0; index < 205; index++) {
+      draft(`src/content/blog/${String(index)}.md`, "no images here");
+    }
+
+    const summary = tracker.recompute();
+
+    expect(summary).toEqual({ documents: 206, references: 1 });
+    expect(repository.findById("m1")).toMatchObject({
+      referenceCount: 1,
+      unusedSince: null,
+    });
+  });
+
   it("ignores URLs that are not ours", () => {
     media("m1", "media/ab/one.png");
     draft("src/content/blog/a.md", "![](https://example.com/media/ab/one.png)");

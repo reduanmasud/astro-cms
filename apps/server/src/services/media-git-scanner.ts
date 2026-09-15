@@ -21,6 +21,17 @@ export interface GitScanSummary {
   readonly references: number;
 }
 
+/**
+ * The scan could not establish what is referenced, so its result must not be
+ * treated as "nothing is referenced". Always thrown, never returned.
+ */
+export class MediaScanError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MediaScanError";
+  }
+}
+
 export interface MediaGitScanner {
   scan(): Promise<GitScanSummary>;
 }
@@ -51,11 +62,25 @@ export function createMediaGitScanner({
     return roots.some((root) => root === "." || path.startsWith(`${root}/`));
   }
 
+  /**
+   * The directories a reference can live in. An empty list is not an answer:
+   * `discover()` returns no collections when the content config is missing,
+   * and a collection whose loader the static parser cannot model has a null
+   * `contentPath`. Either way nothing would be found, every git reference
+   * would be replaced with none, and the collector would read that as proof
+   * of disuse. Refuse instead.
+   */
   async function contentRoots(): Promise<string[]> {
     const { collections } = await project.discover();
-    return collections
+    const roots = collections
       .map((collection) => collection.contentPath)
       .filter((path): path is string => path !== null);
+    if (roots.length === 0) {
+      throw new MediaScanError(
+        "No content collection paths could be resolved, so no media reference can be proved. Check src/content.config.* and its loaders.",
+      );
+    }
+    return roots;
   }
 
   async function scanRef(
@@ -95,6 +120,11 @@ export function createMediaGitScanner({
           .filter((head) => head.startsWith(CMS_BRANCH_PREFIX)),
       ];
 
+      // Read once per sweep, not once per ref. The roots come from the base
+      // branch even while scanning a `cms/` branch: those branches are created
+      // by the CMS from the base branch, so their layout is the same one.
+      const roots = await contentRoots();
+
       let read = 0;
       let files = 0;
       let references = 0;
@@ -102,13 +132,21 @@ export function createMediaGitScanner({
       for (const ref of refs) {
         const head = await git.getBranchHead(ref);
         if (head === undefined) {
+          // A `cms/` branch disappears when its pull request is merged. The
+          // base branch never legitimately does, so an absent one is a
+          // misconfiguration, not a prune.
+          if (ref === baseBranch) {
+            throw new MediaScanError(
+              `Base branch "${baseBranch}" does not exist, so its media references cannot be read. Check GITHUB_BASE_BRANCH.`,
+            );
+          }
           repository.deleteGitReferences(ref);
           scanned.delete(ref);
           continue;
         }
         if (scanned.get(ref) === head) continue;
 
-        const result = await scanRef(ref, await contentRoots());
+        const result = await scanRef(ref, roots);
         scanned.set(ref, head);
         read += 1;
         files += result.files;

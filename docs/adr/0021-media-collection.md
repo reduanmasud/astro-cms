@@ -55,9 +55,20 @@ without error is allowed to treat "unreferenced" as true. Deletion still
 requires `unused_since` older than the grace period, so one failed sweep
 costs nothing but a delay; the next successful sweep gets to try again.
 
+An empty answer counts as a failure, not a result. The scanner throws rather
+than returning nothing when the project resolves to no content roots (a
+missing `src/content.config.*`, or loaders the static parser cannot model),
+when the base branch itself is absent — only a `cms/` branch may be pruned
+for having disappeared — and the GitHub client refuses to return a truncated
+list of open pull requests. Each of those would otherwise look like a
+successful scan that found nothing, and wipe live references.
+
 `MEDIA_GC_INTERVAL_HOURS` (default 6, `0` disables the timer) and
-`MEDIA_GC_GRACE_DAYS` (default 7) control the schedule. The collector is
-never constructed, and no timer starts, when media storage is unconfigured.
+`MEDIA_GC_GRACE_DAYS` (default 7, minimum 1) control the schedule. The grace
+period has a floor because a zero-day grace is the no-grace-period option
+rejected below, reached by configuration instead of by decision. The
+collector is never constructed, and no timer starts, when media storage is
+unconfigured.
 
 ## Alternatives Considered
 
@@ -129,6 +140,9 @@ never constructed, and no timer starts, when media storage is unconfigured.
   scale; the persisted-scan-state alternative above is the fallback if
   this becomes a problem.
 - A sweep that fails on every run — a persistently misconfigured GitHub
-  token, for instance — silently accumulates unused media forever rather
-  than deleting anything. Mitigation: `onError` logs every failed sweep;
-  an operator watching logs will see it.
+  token, for instance — accumulates unused media forever rather than
+  deleting anything. Mitigation: a refused sweep is not an exception, so
+  `onError` never sees it; instead `collect` returns `skipped: true` with a
+  `reason` (`scan_failed` or `storage_disabled`) and the error that stopped
+  it, and `onSweep` logs that at error level on every such run. An operator
+  watching logs sees one line per refused sweep, naming the cause.

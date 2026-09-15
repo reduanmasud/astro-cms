@@ -1,6 +1,6 @@
 import type { MediaRepository } from "../db/media-repository.ts";
 import { mediaKeysIn } from "../media/urls.ts";
-import type { DocumentService } from "./documents.ts";
+import { MAX_PAGE_SIZE, type DocumentService } from "./documents.ts";
 
 /**
  * Which drafts use which media (docs/adr/0008-media-storage-and-gc.md).
@@ -10,8 +10,9 @@ import type { DocumentService } from "./documents.ts";
  * `unused_since` so a later garbage collector can age them out; nothing is
  * deleted here.
  *
- * Pull requests and the base branch are not scanned yet; that arrives with
- * publishing, when the CMS knows which drafts are on which branch.
+ * The other two sources — open CMS pull requests and the base branch — are
+ * scanned by `media-git-scanner.ts` into their own table, and
+ * `MediaRecord.referenceCount` sums both (ADR-0021).
  */
 
 export interface ReferenceSummary {
@@ -61,11 +62,17 @@ export function createMediaReferenceTracker({
     recompute() {
       let references = 0;
       let seen = 0;
-      // Drafts are few; a full pass keeps this simple and always correct.
-      for (const summary of documents.list({ limit: 200 })) {
-        const document = documents.get(summary.id);
-        references += sync(document.id, document.source);
-        seen += 1;
+      // Every draft, page by page. A partial pass would look exactly like a
+      // full one to the collector, and the drafts it skipped would have their
+      // media counted as unreferenced.
+      for (let offset = 0; ; offset += MAX_PAGE_SIZE) {
+        const page = documents.list({ limit: MAX_PAGE_SIZE, offset });
+        for (const summary of page) {
+          const document = documents.get(summary.id);
+          references += sync(document.id, document.source);
+          seen += 1;
+        }
+        if (page.length < MAX_PAGE_SIZE) break;
       }
       repository.refreshUnusedMarkers(now());
       return { documents: seen, references };

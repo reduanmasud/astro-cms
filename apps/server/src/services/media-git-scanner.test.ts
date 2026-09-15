@@ -105,6 +105,61 @@ describe("media git scanner", () => {
     expect(media.findById("m1")?.referenceCount).toBe(0);
   });
 
+  it("ignores a Markdown file outside every content path", async () => {
+    build({ ...astro, "docs/notes.md": `![hero](${URL})\n` });
+
+    await scanner.scan();
+
+    expect(media.findById("m1")?.referenceCount).toBe(0);
+  });
+
+  it("refuses to scan when the project resolves to no content roots", async () => {
+    // No src/content.config.*, so discover() reports zero collections
+    // without throwing: every reference would silently be wiped.
+    build({
+      "package.json": astro["package.json"],
+      "astro.config.mjs": astro["astro.config.mjs"],
+      "src/content/blog/hello.md": `![](${URL})\n`,
+    });
+    media.setGitReferences("main", [
+      { mediaId: "m1", path: "src/content/blog/hello.md" },
+    ]);
+
+    await expect(scanner.scan()).rejects.toThrow(/content collection paths/);
+
+    expect(media.findById("m1")?.referenceCount).toBe(1);
+    expect(media.listGitRefs()).toEqual(["main"]);
+  });
+
+  it("refuses to scan when the base branch does not exist", async () => {
+    // A GITHUB_BASE_BRANCH typo: the branch is simply absent, which for a
+    // cms/ branch means "merged" and for the base branch means "misconfigured".
+    build(astro);
+    media.setGitReferences("trunk", [
+      { mediaId: "m1", path: "src/content/blog/hello.md" },
+    ]);
+    const wrongBase = createMediaGitScanner({
+      repository: media,
+      git: createRepositoryService({
+        github: github.client,
+        baseBranch: "trunk",
+      }),
+      project: createAstroProjectService({
+        repository: createRepositoryService({
+          github: github.client,
+          baseBranch: "main",
+        }),
+      }),
+      publicUrl: PUBLIC_URL,
+      baseBranch: "trunk",
+    });
+
+    await expect(wrongBase.scan()).rejects.toThrow(/Base branch "trunk"/);
+
+    expect(media.findById("m1")?.referenceCount).toBe(1);
+    expect(media.listGitRefs()).toEqual(["trunk"]);
+  });
+
   it("does not read a ref whose head has not moved", async () => {
     build({ ...astro, "src/content/blog/hello.md": `![hero](${URL})\n` });
     await scanner.scan();

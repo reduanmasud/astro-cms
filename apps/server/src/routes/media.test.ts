@@ -1,5 +1,6 @@
 import { deflateSync } from "node:zlib";
 import { beforeEach, describe, expect, it } from "vitest";
+import { createMediaRepository } from "../db/media-repository.ts";
 import {
   buildTestApp,
   requestJson,
@@ -298,6 +299,29 @@ describe("media API", () => {
         `/api/documents/${drafts.documents[0]?.id ?? ""}`,
         { source: `![x](${uploaded.media?.url ?? ""})` },
       );
+
+      const response = await requestJson(
+        harness.app,
+        cookie,
+        "DELETE",
+        `/api/media/${uploaded.media?.id ?? ""}`,
+      );
+
+      expect(response.status).toBe(409);
+      expect((await read(response)).error?.code).toBe("in_use");
+      expect(harness.mediaStorage.keys()).toHaveLength(1);
+    });
+
+    it("refuses a file that is live on the base branch", async () => {
+      // No draft mentions it; only published content on main does. Before
+      // git references counted, this route deleted it (ADR-0021).
+      const uploaded = await read(await upload(png()));
+      createMediaRepository(harness.db).setGitReferences("main", [
+        {
+          mediaId: uploaded.media?.id ?? "",
+          path: "src/content/blog/hello.md",
+        },
+      ]);
 
       const response = await requestJson(
         harness.app,
