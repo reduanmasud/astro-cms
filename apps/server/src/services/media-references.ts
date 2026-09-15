@@ -1,4 +1,5 @@
 import type { MediaRepository } from "../db/media-repository.ts";
+import { mediaKeysIn } from "../media/urls.ts";
 import type { DocumentService } from "./documents.ts";
 
 /**
@@ -39,22 +40,8 @@ export function createMediaReferenceTracker({
   publicUrl,
   now = Date.now,
 }: Deps): MediaReferenceTracker {
-  /** Object keys of our own media mentioned anywhere in the text. */
-  function keysIn(source: string): string[] {
-    if (publicUrl === null) return [];
-    const found = new Set<string>();
-    const base = publicUrl.replace(/\/+$/, "");
-    // Matches the URL wherever it appears: Markdown, HTML, or MDX props.
-    const pattern = new RegExp(`${escapeRegExp(base)}/([A-Za-z0-9/_.-]+)`, "g");
-    for (const match of source.matchAll(pattern)) {
-      const key = match[1];
-      if (key !== undefined) found.add(key);
-    }
-    return [...found];
-  }
-
   function sync(documentId: string, source: string): number {
-    const keys = keysIn(source);
+    const keys = mediaKeysIn(source, publicUrl);
     const media = repository.findByObjectKeys(keys);
     repository.setReferences(
       documentId,
@@ -84,8 +71,4 @@ export function createMediaReferenceTracker({
       return { documents: seen, references };
     },
   };
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
