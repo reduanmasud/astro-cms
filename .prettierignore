@@ -5,3 +5,4 @@ pnpm-lock.yaml
 .claude-flow
 .playwright-mcp
 .env.example
+.superpowers
