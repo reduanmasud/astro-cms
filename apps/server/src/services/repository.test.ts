@@ -288,3 +288,40 @@ describe("getPullRequest", () => {
     await expect(repository.getPullRequest(999)).resolves.toBeUndefined();
   });
 });
+
+describe("reading branches and pull requests", () => {
+  it("lists open pull requests", async () => {
+    const github = createFakeGitHubClient();
+    const repository = createRepositoryService({
+      github: github.client,
+      baseBranch: "main",
+    });
+    await github.client.createBranch(
+      "cms/blog/hello",
+      github.headOf("main") ?? "",
+    );
+    await github.client.createPullRequest({
+      head: "cms/blog/hello",
+      base: "main",
+      title: "CMS: blog/hello",
+      body: "",
+    });
+
+    await expect(repository.listOpenPullRequests()).resolves.toMatchObject([
+      { head: "cms/blog/hello", state: "open" },
+    ]);
+  });
+
+  it("reads a branch head, and undefined for one that does not exist", async () => {
+    const github = createFakeGitHubClient();
+    const repository = createRepositoryService({
+      github: github.client,
+      baseBranch: "main",
+    });
+
+    await expect(repository.getBranchHead("main")).resolves.toBe(
+      github.headOf("main"),
+    );
+    await expect(repository.getBranchHead("nope")).resolves.toBeUndefined();
+  });
+});

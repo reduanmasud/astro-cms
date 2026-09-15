@@ -51,6 +51,10 @@ export interface RepositoryService {
    */
   saveToBranch(input: SaveToBranchInput): Promise<SaveToBranchResult>;
   getPullRequest(number: number): Promise<PullRequest | undefined>;
+  /** Open pull requests, newest first. Read-only. */
+  listOpenPullRequests(): Promise<PullRequest[]>;
+  /** Commit at the tip of `branch`, or undefined when there is no such branch. */
+  getBranchHead(branch: string): Promise<string | undefined>;
   /** Runs read-only checks and gathers stats. Failures become failed checks. */
   getStatus(): Promise<RepositoryStatus>;
 }
@@ -149,6 +153,14 @@ export function createRepositoryService({
 
     getPullRequest(number) {
       return github.getPullRequest(number);
+    },
+
+    listOpenPullRequests() {
+      return github.listOpenPullRequests();
+    },
+
+    getBranchHead(branch) {
+      return github.getBranchHead(branch);
     },
 
     getStatus() {
