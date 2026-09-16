@@ -63,6 +63,14 @@ CMS cannot edit at all is still preserved byte-for-byte, as
 the CMS _does_ edit gets this weaker guarantee, which is the price of
 editing it at all.
 
+Two implementation details this rests on, both measured rather than assumed:
+
+- **`toString()` must pass `{ flowCollectionPadding: false }`.** Without it,
+  `tags: [astro, cms]` becomes `tags: [ astro, cms ]` on any save at all —
+  even one that changes nothing else in the file.
+- **An empty document stringifies to `"null\n"`, not `""`.** A post with no
+  frontmatter must keep having none rather than gaining a literal `null`.
+
 ## Controls
 
 The parser emits twelve field types. Five get real controls, plus arrays of
