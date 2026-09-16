@@ -278,6 +278,9 @@ export function DocumentEditor({
 
   function updateFrontmatter(value: string): void {
     setFrontmatter(value);
+    // Any edit makes a "this is not valid YAML yet" complaint stale: it was
+    // about text that no longer exists. The next toggle decides afresh.
+    setYamlError(undefined);
     frontmatterRef.current =
       value === "" && loaded?.frontmatter === null ? null : value;
     autosave.schedule();
