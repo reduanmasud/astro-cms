@@ -62,16 +62,18 @@ export function Control({
     );
   }
 
+  if (kind === "number") {
+    return <NumberControl id={id} value={String(value)} onChange={onChange} />;
+  }
+
   const type =
-    kind === "number"
-      ? "number"
-      : kind === "date"
-        ? "date"
-        : kind === "email"
-          ? "email"
-          : kind === "url"
-            ? "url"
-            : "text";
+    kind === "date"
+      ? "date"
+      : kind === "email"
+        ? "email"
+        : kind === "url"
+          ? "url"
+          : "text";
 
   return (
     <input
@@ -115,6 +117,48 @@ function TagsControl({ id, value, onChange }: TagsControlProps): JSX.Element {
       onChange={(event) => {
         setText(event.target.value);
         onChange(splitTags(event.target.value));
+      }}
+    />
+  );
+}
+
+interface NumberControlProps {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+}
+
+/**
+ * Its own component for the same reason as `TagsControl`: it needs
+ * `useState` for the text being typed, and the React Compiler's rules
+ * forbid a hook behind a conditional branch of a plain function.
+ *
+ * Driving the input's `value` straight from the document means a keystroke
+ * that doesn't yet change the stored value — typing the "." in "3.", or a
+ * leading zero in "007" — leaves the `value` prop unchanged (`toYamlValue`
+ * parses "3." to the number 3, and `toControlValue` turns that back into
+ * "3"), and React then resets the DOM node back to that unchanged prop,
+ * erasing the very character just typed. Holding the typed text here
+ * breaks that loop: the text always updates, and `onChange` still fires
+ * with the typed string on every keystroke, exactly as the number branch
+ * always did — `toYamlValue` already converts it, falling back to the raw
+ * string when `Number()` gives NaN.
+ */
+function NumberControl({
+  id,
+  value,
+  onChange,
+}: NumberControlProps): JSX.Element {
+  const [text, setText] = useState<string>();
+
+  return (
+    <input
+      id={id}
+      type="number"
+      value={text ?? value}
+      onChange={(event) => {
+        setText(event.target.value);
+        onChange(event.target.value);
       }}
     />
   );
