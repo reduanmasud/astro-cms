@@ -264,8 +264,17 @@ code {
 
 .frontmatter-fields label:has(input[type="checkbox"]) {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
+}
+
+/* The required/bad-YAML hint is a flex sibling of the checkbox row, not a
+   grid row below it here — without a forced line break it lays out beside
+   the checkbox instead of under it. `flex-basis: 100%` pushes it onto its
+   own line while the checkbox and its label stay side by side. */
+.frontmatter-fields label:has(input[type="checkbox"]) > .hint {
+  flex-basis: 100%;
 }
 
 .frontmatter-fields input,
