@@ -74,6 +74,31 @@ describe("parseFrontmatter", () => {
     expect(parseFrontmatter("title: [unclosed")).toBeUndefined();
   });
 
+  it("returns undefined for an alias bomb that parses cleanly but blows up on materialisation", () => {
+    // Zero parse errors, but yaml's own resource-exhaustion guard throws
+    // from `toJSON()` — which `parseFrontmatter` must trigger itself so the
+    // throw happens here, not later inside a render with no error boundary.
+    const bomb = [
+      "a: &a [x,x]",
+      "b0: &b0 [*a,*a]",
+      "b1: &b1 [*b0,*b0]",
+      "b2: &b2 [*b1,*b1]",
+      "b3: &b3 [*b2,*b2]",
+      "b4: &b4 [*b3,*b3]",
+      "b5: &b5 [*b4,*b4]",
+    ].join("\n");
+
+    expect(parseFrontmatter(bomb)).toBeUndefined();
+  });
+
+  it("returns undefined for a self-referencing anchor that toJSON() accepts but JSON.stringify() cannot", () => {
+    // toJSON() succeeds and returns a circular JS object; toControlValue
+    // calls JSON.stringify on object values, so that must be proven too.
+    const selfAnchor = "a: &a\n  self: *a";
+
+    expect(parseFrontmatter(selfAnchor)).toBeUndefined();
+  });
+
   it("reads and writes one key as raw YAML text", () => {
     const doc = parseFrontmatter(POST);
 

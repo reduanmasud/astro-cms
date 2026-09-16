@@ -38,7 +38,23 @@ export function parseFrontmatter(
   source: string | null,
 ): FrontmatterDocument | undefined {
   const doc = parseDocument(source ?? "");
-  return doc.errors.length > 0 ? undefined : wrap(doc);
+  if (doc.errors.length > 0) return undefined;
+  // A document can parse with zero errors and still be unusable: `yaml`'s
+  // own alias-count guard throws out of `toJSON()` for a deeply chained
+  // alias ("resource exhaustion attack"), and a self-referencing anchor
+  // makes `toJSON()` succeed but return a circular object that
+  // `JSON.stringify` (which `toControlValue` calls on every object value)
+  // cannot serialise. Both would otherwise throw for the first time deep
+  // inside `FrontmatterFields`' render, and this repository has no error
+  // boundary, so proving both here — before handing the document out — is
+  // what routes a document like that into the whole-editor raw fallback
+  // instead of leaving the app permanently unopenable.
+  try {
+    JSON.stringify(doc.toJSON());
+  } catch {
+    return undefined;
+  }
+  return wrap(doc);
 }
 
 function wrap(doc: Document): FrontmatterDocument {
