@@ -62,6 +62,12 @@ export function DocumentEditor({
   const [conflict, setConflict] = useState<DriftReport | null>(null);
   const [schema, setSchema] = useState<readonly SchemaField[] | null>(null);
   const [rawReason, setRawReason] = useState<string>();
+  // Gates the frontmatter section only — the body editor stays interactive
+  // throughout. Until the collection request settles, `fmDoc` still holds
+  // the frontmatter parsed from the *original* source, so the first control
+  // edit would overwrite whatever was typed into the raw-textarea fallback
+  // during that window (docs: see the effect below).
+  const [collectionSettled, setCollectionSettled] = useState(false);
   // State, not a ref: the fallback below reads it during render, which the
   // React Compiler's ref rule forbids for a ref (react-hooks/refs).
   const [fmDoc, setFmDoc] = useState<FrontmatterDocument>();
@@ -105,9 +111,12 @@ export function DocumentEditor({
         if (cancelled) return;
         if (collection.schema.inferred) setSchema(collection.schema.fields);
         else setRawReason(collection.schema.reason);
+        setCollectionSettled(true);
       })
       .catch((caught: Error) => {
-        if (!cancelled) setRawReason(caught.message);
+        if (cancelled) return;
+        setRawReason(caught.message);
+        setCollectionSettled(true);
       });
     return () => {
       cancelled = true;
@@ -259,7 +268,9 @@ export function DocumentEditor({
 
       <details className="frontmatter" open>
         <summary>Frontmatter</summary>
-        {schema !== null && fmDoc !== undefined ? (
+        {!collectionSettled ? (
+          <p className="hint">Loading…</p>
+        ) : schema !== null && fmDoc !== undefined ? (
           <FrontmatterFields
             schema={schema}
             document={fmDoc}
