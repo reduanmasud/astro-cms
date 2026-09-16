@@ -155,12 +155,12 @@ fifty lines. See [ADR-0016](docs/adr/0016-collaboration-service.md).
 
 Frontmatter renders as controls generated from the collection's schema: a
 checkbox for a boolean, a date picker for a date, a select for an enum, a tag
-input for an array of strings, and a text input (a textarea once a value
-spans lines) for a plain string. A field whose type has no control yet —
-`object`, `image`, `reference`, `union`, `literal`, or an array of anything
-but strings — gets a raw YAML box for that one field, labelled with why.
-Keys in the file the schema does not mention appear, still editable, in an
-"Other fields" box.
+input for an array of strings, a number input for a number, and a text
+input (a textarea once a value spans lines) for a plain string. A field
+whose type has no control yet — `object`, `image`, `reference`, `union`,
+`literal`, `unknown`, or an array of anything but strings — gets a raw YAML
+box for that one field, labelled with why. Keys in the file the schema does
+not mention appear, still editable, in an "Other fields" box.
 
 An edit writes back through a YAML document rather than a parse-and-restringify
 round trip, so comments, key order, and quoting on every key nobody touched
