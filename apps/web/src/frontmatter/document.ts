@@ -53,7 +53,12 @@ function wrap(doc: Document): FrontmatterDocument {
     keys: () => Object.keys(json()),
 
     // The raw boxes: a type with no control, and keys outside the schema.
-    getRaw: (key) => stringify(json()[key], STRINGIFY).trimEnd(),
+    // `stringify(undefined, …)` returns `undefined`, not a string, so an
+    // absent key must be handled before calling it rather than after.
+    getRaw: (key) => {
+      const value = json()[key];
+      return value === undefined ? "" : stringify(value, STRINGIFY).trimEnd();
+    },
     setRaw: (key, yamlText) => {
       const parsed = parseDocument(yamlText);
       if (parsed.errors.length > 0) return false;

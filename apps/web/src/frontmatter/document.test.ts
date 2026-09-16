@@ -90,4 +90,8 @@ describe("parseFrontmatter", () => {
     expect(doc?.setRaw("legacyId", "[unclosed")).toBe(false);
     expect(doc?.get("legacyId")).toBe(4821);
   });
+
+  it("reads an absent key as empty rather than throwing", () => {
+    expect(parseFrontmatter(POST)?.getRaw("heroImage")).toBe("");
+  });
 });
