@@ -73,6 +73,58 @@ describe("planField", () => {
   it("keeps the date picker for an empty date", () => {
     expect(planField(field({ type: "date" }), undefined).kind).toBe("date");
   });
+
+  it("falls back for a date value yaml parsed as a number", () => {
+    // "20260115" with no separators parses as a YAML number, not a string,
+    // so a check against `typeof value === "string"` alone would miss it.
+    const plan = planField(field({ type: "date" }), 20260115);
+
+    expect(plan.kind).toBe("raw");
+    expect(plan.reason).toContain("20260115");
+  });
+
+  it("falls back for an enum value outside its declared values", () => {
+    const plan = planField(
+      field({ type: "enum", values: ["draft", "published"] }),
+      "archived",
+    );
+
+    expect(plan.kind).toBe("raw");
+    expect(plan.reason).toContain("archived");
+  });
+
+  it("keeps the select for an enum value within its declared values", () => {
+    const plan = planField(
+      field({ type: "enum", values: ["draft", "published"] }),
+      "draft",
+    );
+
+    expect(plan.kind).toBe("select");
+  });
+
+  it("keeps the select for an empty enum value", () => {
+    const plan = planField(
+      field({ type: "enum", values: ["draft", "published"] }),
+      undefined,
+    );
+
+    expect(plan.kind).toBe("select");
+  });
+
+  it("falls back for a non-numeric number value", () => {
+    const plan = planField(field({ type: "number" }), "3 items");
+
+    expect(plan.kind).toBe("raw");
+    expect(plan.reason).toContain("3 items");
+  });
+
+  it("keeps the number input for a numeric value", () => {
+    expect(planField(field({ type: "number" }), 3).kind).toBe("number");
+  });
+
+  it("keeps the number input for an empty number value", () => {
+    expect(planField(field({ type: "number" }), undefined).kind).toBe("number");
+  });
 });
 
 describe("splitTags", () => {

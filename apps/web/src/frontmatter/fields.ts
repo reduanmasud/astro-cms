@@ -38,8 +38,37 @@ const NO_CONTROL = new Set([
   "unknown",
 ]);
 
+/**
+ * The value as text, for comparing it against a control's value space
+ * (`ISO_DATE`, an enum's declared `values`, `Number.isNaN`). Empty for an
+ * absent value, so an unset field never gets forced into a fallback.
+ */
+function asText(value: unknown): string {
+  if (value === undefined || value === null) return "";
+  // ESLint's no-base-to-string would reject String() for an object; a
+  // frontmatter value never legitimately is one here, but the parameter
+  // type is `unknown`, so this stays consistent with `toControlValue` below.
+  if (typeof value === "object") return JSON.stringify(value);
+  // eslint-disable-next-line @typescript-eslint/no-base-to-string
+  return String(value);
+}
+
 export function planField(field: SchemaField, value?: unknown): FieldPlan {
-  if (field.type === "enum") return { field, kind: "select" };
+  if (field.type === "enum") {
+    // A <select> whose current value is not one of its <option>s renders
+    // with nothing selected — indistinguishable from the "—" placeholder,
+    // so a required, filled-in field would look completely unset with
+    // nothing explaining why. The data still sits there intact underneath.
+    const text = asText(value);
+    if (text !== "" && !(field.values ?? []).some((v) => String(v) === text)) {
+      return {
+        field,
+        kind: "raw",
+        reason: `enum value "${text}" is not one of the declared values`,
+      };
+    }
+    return { field, kind: "select" };
+  }
   if (field.type === "array") {
     return field.items?.type === "string"
       ? { field, kind: "tags" }
@@ -52,17 +81,34 @@ export function planField(field: SchemaField, value?: unknown): FieldPlan {
   if (NO_CONTROL.has(field.type)) {
     return { field, kind: "raw", reason: `${field.type} has no control yet` };
   }
-  if (field.type === "number") return { field, kind: "number" };
+  if (field.type === "number") {
+    // <input type="number"> sanitises away any value that is not a valid
+    // floating-point number, rendering blank — the same silent-unset look
+    // as the date and enum fallbacks below, with the data still intact.
+    const text = asText(value);
+    if (text !== "" && Number.isNaN(Number(text))) {
+      return {
+        field,
+        kind: "raw",
+        reason: `number value "${text}" is not numeric`,
+      };
+    }
+    return { field, kind: "number" };
+  }
   if (field.type === "boolean") return { field, kind: "checkbox" };
   if (field.type === "date") {
     // <input type="date"> requires YYYY-MM-DD. A hand-written value like
     // "Jul 08 2023" would render as a silently blank picker with the data
     // still intact underneath, so it falls back to the raw box instead.
-    if (typeof value === "string" && value !== "" && !ISO_DATE.test(value)) {
+    // Compare against `String(value)` rather than requiring a string
+    // already: a bare `20260115` parses as a YAML *number*, and would
+    // otherwise reach the picker and render blank the same way.
+    const text = asText(value);
+    if (text !== "" && !ISO_DATE.test(text)) {
       return {
         field,
         kind: "raw",
-        reason: `date value "${value}" is not in YYYY-MM-DD format`,
+        reason: `date value "${text}" is not in YYYY-MM-DD format`,
       };
     }
     return { field, kind: "date" };
