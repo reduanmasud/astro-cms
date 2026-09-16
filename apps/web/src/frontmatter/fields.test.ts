@@ -60,6 +60,17 @@ describe("planField", () => {
 
     expect(plan.kind).toBe("raw");
   });
+
+  it("falls back for a date that is not YYYY-MM-DD", () => {
+    const plan = planField(field({ type: "date" }), "Jul 08 2023");
+
+    expect(plan.kind).toBe("raw");
+    expect(plan.reason).toContain("Jul 08 2023");
+  });
+
+  it("keeps the date picker for an empty date", () => {
+    expect(planField(field({ type: "date" }), undefined).kind).toBe("date");
+  });
 });
 
 describe("planFields", () => {

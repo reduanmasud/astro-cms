@@ -26,6 +26,8 @@ export interface FieldPlan {
   readonly reason?: string;
 }
 
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
 /** Types a wrong control would serve worse than no control at all. */
 const NO_CONTROL = new Set([
   "literal",
@@ -52,7 +54,19 @@ export function planField(field: SchemaField, value?: unknown): FieldPlan {
   }
   if (field.type === "number") return { field, kind: "number" };
   if (field.type === "boolean") return { field, kind: "checkbox" };
-  if (field.type === "date") return { field, kind: "date" };
+  if (field.type === "date") {
+    // <input type="date"> requires YYYY-MM-DD. A hand-written value like
+    // "Jul 08 2023" would render as a silently blank picker with the data
+    // still intact underneath, so it falls back to the raw box instead.
+    if (typeof value === "string" && value !== "" && !ISO_DATE.test(value)) {
+      return {
+        field,
+        kind: "raw",
+        reason: `date value "${value}" is not in YYYY-MM-DD format`,
+      };
+    }
+    return { field, kind: "date" };
+  }
 
   if (field.format === "email") return { field, kind: "email" };
   if (field.format === "url") return { field, kind: "url" };
