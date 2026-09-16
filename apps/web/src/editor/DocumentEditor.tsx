@@ -264,7 +264,17 @@ export function DocumentEditor({
             schema={schema}
             document={fmDoc}
             onChange={() => {
-              const next = fmDoc.toString();
+              // `fmDoc.toString()` returns YAML text, which correctly ends in
+              // a trailing newline. `frontmatterRef` instead holds frontmatter
+              // the way `splitFrontmatter` (packages/markdown/src/parse.ts)
+              // yields it, with that trailing newline already excluded, since
+              // `serializeDocument` (packages/markdown/src/serialize.ts) adds
+              // its own when writing the document back out. Strip exactly one
+              // trailing newline to bridge the two contracts, not all
+              // trailing whitespace: a blank line the user left inside their
+              // frontmatter is theirs to keep.
+              const raw = fmDoc.toString();
+              const next = raw.endsWith("\n") ? raw.slice(0, -1) : raw;
               frontmatterRef.current =
                 next === "" && loaded.frontmatter === null ? null : next;
               setFrontmatter(next);
