@@ -26,9 +26,12 @@ export interface FrontmatterDocument {
   toString(): string;
 }
 
-// Without this, `tags: [a, b]` comes back as `tags: [ a, b ]` on every save,
-// even one that changed nothing else.
-const STRINGIFY = { flowCollectionPadding: false };
+// Two `yaml` defaults would otherwise reformat keys nobody touched on every
+// save: `flowCollectionPadding` turns `tags: [a, b]` into `tags: [ a, b ]`,
+// and `lineWidth: 80` reflows any long scalar (e.g. a one-line `description`)
+// across multiple lines. Both are disabled so editing one key never
+// disturbs the rest of the document.
+const STRINGIFY = { flowCollectionPadding: false, lineWidth: 0 };
 
 /** Parses frontmatter, or undefined when the source is not valid YAML. */
 export function parseFrontmatter(

@@ -94,4 +94,18 @@ describe("parseFrontmatter", () => {
   it("reads an absent key as empty rather than throwing", () => {
     expect(parseFrontmatter(POST)?.getRaw("heroImage")).toBe("");
   });
+
+  it("leaves a long line alone when another key changes", () => {
+    const long = [
+      "title: Hi",
+      `description: ${"word ".repeat(30).trim()}`,
+      "draft: false",
+      "",
+    ].join("\n");
+    const doc = parseFrontmatter(long);
+
+    doc?.set("draft", true);
+
+    expect(doc?.toString()).toBe(long.replace("draft: false", "draft: true"));
+  });
 });
