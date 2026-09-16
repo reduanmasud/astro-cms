@@ -23,10 +23,14 @@ Frontmatter is edited as a `yaml@2.9` `Document`, not parsed and
 re-serialised. `document.ts` wraps it as `parseFrontmatter` /
 `FrontmatterDocument`; a control calls `set`/`remove` on one key, and every
 key nobody touched keeps its comments, order, and quoting. `toString()`
-passes `{ flowCollectionPadding: false }`, without which `tags: [astro, cms]`
-becomes `tags: [ astro, cms ]` on any save at all, and an empty document — a
-post with no frontmatter — is special-cased back to `""` rather than the
-library's default `"null\n"`.
+passes `{ flowCollectionPadding: false, lineWidth: 0 }`. Without the first,
+`tags: [astro, cms]` becomes `tags: [ astro, cms ]` on any save at all.
+Without the second — the more consequential of the two — `yaml`'s default
+80-column width reflows any long scalar (a one-line `description`, say)
+across multiple lines on every save, so a diff meant to change one key would
+otherwise also rewrap lines nobody touched. An empty document — a post with
+no frontmatter — is special-cased back to `""` rather than the library's
+default `"null\n"`.
 
 Each of the twelve field types the static content-config parser produces
 gets a control plan (`fields.ts`). Five map to real controls — text (or a
@@ -38,6 +42,14 @@ labelled with why: a wrong control — a text input mangling a nested object,
 say — is worse than an honest "no control yet". Keys in the file the schema
 does not mention at all appear, still editable, in an "Other fields" box
 below the known fields.
+
+A field also falls back to a raw box, even when its type has a control,
+when the file's current value doesn't fit that control's value space: a
+date not in `YYYY-MM-DD`, an enum value outside its declared `values`, or a
+number that isn't numeric. Each of those controls renders the value as
+blank rather than erroring, which for a required field is indistinguishable
+from the field being unset — the raw box says why, and the value stays
+intact underneath either way.
 
 That gives three fallback levels, each narrower than the last, which is
 ADR-0007's promise kept concretely: the whole editor falls back to today's

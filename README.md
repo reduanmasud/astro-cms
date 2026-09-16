@@ -162,6 +162,12 @@ whose type has no control yet — `object`, `image`, `reference`, `union`,
 box for that one field, labelled with why. Keys in the file the schema does
 not mention appear, still editable, in an "Other fields" box.
 
+A control whose value space can't hold the file's current value also falls
+back to a raw box, even for a type listed above: a date not in
+`YYYY-MM-DD`, an enum value outside its declared list, or a number that
+isn't numeric all render as a silently blank control otherwise, which the
+raw box avoids by showing the value as YAML instead.
+
 An edit writes back through a YAML document rather than a parse-and-restringify
 round trip, so comments, key order, and quoting on every key nobody touched
 survive a save. Whitespace right before an inline comment does not — that is
