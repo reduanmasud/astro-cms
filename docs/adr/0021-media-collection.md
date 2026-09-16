@@ -146,3 +146,20 @@ unconfigured.
   `reason` (`scan_failed` or `storage_disabled`) and the error that stopped
   it, and `onSweep` logs that at error level on every such run. An operator
   watching logs sees one line per refused sweep, naming the cause.
+- A collection whose loader the content-config parser cannot model is
+  scanned as though it had no directory at all. The parser reports
+  `contentPath: null` both for a `glob()` call it failed to read — one
+  assembled from a variable, say — and for a loader that legitimately reads
+  no files, such as an API-backed collection. Those nulls are dropped from
+  the scanned roots, so media referenced only from an unmodelled
+  collection's directory looks unreferenced and is eventually deleted.
+  Refusing on any null root was considered and rejected: an ordinary Astro 5
+  project may hold an API-backed collection beside file-backed ones, and
+  refusing would switch collection off for it entirely — a worse outcome
+  than the gap. Mitigation: none today. The narrower fix is available
+  whenever this bites, because the parser does know the callee name: a
+  `glob()` or `file()` call it could not model can be marked distinctly from
+  a loader it simply does not recognise, and only the former need refuse.
+  Until then this is an accepted gap of the same kind
+  [ADR-0008](0008-media-storage-and-gc.md) accepted for URLs hard-coded
+  outside content.
