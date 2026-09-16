@@ -153,7 +153,15 @@ describe("toYamlValue", () => {
     expect(toYamlValue(plan({ nullable: true }), "")).toBeUndefined();
   });
 
-  it("keeps an empty value for a field that is not nullable", () => {
+  it("removes an optional (non-nullable) field that was cleared", () => {
+    // `.optional()` in an Astro content schema sets `required: false` and
+    // leaves `nullable` unset — only `.nullable()` sets that. Clearing such
+    // a field must remove the key, not write "" (which a coerced type like
+    // `z.coerce.date()` then rejects on the next build).
+    expect(toYamlValue(plan({ required: false }), "")).toBeUndefined();
+  });
+
+  it("keeps an empty value for a required field", () => {
     expect(toYamlValue(plan(), "")).toBe("");
   });
 });

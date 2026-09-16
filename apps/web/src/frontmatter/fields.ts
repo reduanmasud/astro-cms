@@ -112,7 +112,16 @@ export function toYamlValue(
   raw: string | boolean | string[],
 ): FrontmatterValue | undefined {
   const empty = raw === "" || (Array.isArray(raw) && raw.length === 0);
-  if (empty && plan.field.nullable === true) return undefined;
+  // `.nullable()` sets `nullable: true`; `.optional()` only sets
+  // `required: false` and leaves `nullable` unset. Astro schemas
+  // overwhelmingly use `.optional()`, so clearing must remove the key on
+  // either signal — writing "" for an optional, coerced field (e.g.
+  // `z.coerce.date().optional()`) fails the next build. Writing "" is kept
+  // only for a field that is still required, where the "required, still
+  // empty" warning fires and "still saves" is deliberate.
+  if (empty && (plan.field.nullable === true || !plan.field.required)) {
+    return undefined;
+  }
 
   if (plan.kind === "checkbox") return raw === true;
   if (plan.kind === "tags") return Array.isArray(raw) ? raw : [];

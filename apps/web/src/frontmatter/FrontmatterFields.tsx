@@ -56,6 +56,18 @@ export function FrontmatterFields({
    */
   function writeRaw(key: string, text: string): void {
     setRawText((previous) => ({ ...previous, [key]: text }));
+    // `parseDocument("")` reports zero errors and `toJSON()` returns null,
+    // so writing an empty box through `setRaw` would write `key: null`
+    // rather than clearing it — turning `heroImage: ./a.png` into
+    // `heroImage: null`, which a schema like `image().optional()` then
+    // rejects on the next build. An empty or whitespace-only box means the
+    // key should go away, the same as clearing a schema-backed field.
+    if (text.trim() === "") {
+      document.remove(key);
+      setBadYaml((previous) => ({ ...previous, [key]: false }));
+      touched();
+      return;
+    }
     const ok = document.setRaw(key, text);
     setBadYaml((previous) => ({ ...previous, [key]: !ok }));
     if (ok) touched();
