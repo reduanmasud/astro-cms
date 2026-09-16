@@ -479,3 +479,20 @@ code {
   color: white;
   user-select: none;
 }
+
+.frontmatter-mode {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.frontmatter-mode button {
+  font-size: 0.8125rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  background: none;
+  color: inherit;
+}

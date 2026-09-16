@@ -37,6 +37,31 @@ export interface DocumentEditorProps {
   onClose: () => void;
 }
 
+/**
+ * Whether to edit frontmatter as YAML rather than through the schema's
+ * controls. One preference for every document: someone who prefers YAML
+ * prefers it everywhere, and per-document state would be a thing to explain.
+ * It lives only in this browser and may be unavailable, so every access is
+ * guarded and the controls are the default when it is.
+ */
+const YAML_MODE_KEY = "astro-cms:frontmatter-yaml";
+
+function preferredYamlMode(): boolean {
+  try {
+    return localStorage.getItem(YAML_MODE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function rememberYamlMode(on: boolean): void {
+  try {
+    localStorage.setItem(YAML_MODE_KEY, String(on));
+  } catch {
+    // A private window, or site data blocked: the preference does not stick.
+  }
+}
+
 interface Loaded {
   document: CmsDocument;
   doc: EditorDoc;
@@ -71,6 +96,9 @@ export function DocumentEditor({
   // State, not a ref: the fallback below reads it during render, which the
   // React Compiler's ref rule forbids for a ref (react-hooks/refs).
   const [fmDoc, setFmDoc] = useState<FrontmatterDocument>();
+  const [yamlMode, setYamlMode] = useState(preferredYamlMode);
+  // Set when leaving YAML mode would need text that does not parse.
+  const [yamlError, setYamlError] = useState<string>();
   // Keyed off state, never a ref: reading refs during render is not allowed.
   const collaboration = useCollaboration(documentId, loaded !== null);
   const seeded = useRef(false);
@@ -219,8 +247,40 @@ export function DocumentEditor({
     setConflict(null);
   }
 
+  /**
+   * Switches the frontmatter between the schema's controls and raw YAML.
+   *
+   * Going to YAML needs nothing: the controls already write what they produce
+   * into `frontmatter`, so the textarea shows it. Coming back does, because
+   * the text may have been edited since — it has to become a new document
+   * before the controls can read it. Text that does not parse keeps you here,
+   * which is what the whole-editor fallback does for the same reason.
+   */
+  function toggleYamlMode(): void {
+    if (!yamlMode) {
+      setYamlError(undefined);
+      setYamlMode(true);
+      rememberYamlMode(true);
+      return;
+    }
+    const parsed = parseFrontmatter(frontmatter);
+    if (parsed === undefined) {
+      setYamlError(
+        "This is not valid YAML yet, so the controls cannot read it.",
+      );
+      return;
+    }
+    setFmDoc(parsed);
+    setYamlError(undefined);
+    setYamlMode(false);
+    rememberYamlMode(false);
+  }
+
   function updateFrontmatter(value: string): void {
     setFrontmatter(value);
+    // Any edit makes a "this is not valid YAML yet" complaint stale: it was
+    // about text that no longer exists. The next toggle decides afresh.
+    setYamlError(undefined);
     frontmatterRef.current =
       value === "" && loaded?.frontmatter === null ? null : value;
     autosave.schedule();
@@ -271,27 +331,49 @@ export function DocumentEditor({
         {!collectionSettled ? (
           <p className="hint">Loading…</p>
         ) : schema !== null && fmDoc !== undefined ? (
-          <FrontmatterFields
-            schema={schema}
-            document={fmDoc}
-            onChange={() => {
-              // `fmDoc.toString()` returns YAML text, which correctly ends in
-              // a trailing newline. `frontmatterRef` instead holds frontmatter
-              // the way `splitFrontmatter` (packages/markdown/src/parse.ts)
-              // yields it, with that trailing newline already excluded, since
-              // `serializeDocument` (packages/markdown/src/serialize.ts) adds
-              // its own when writing the document back out. Strip exactly one
-              // trailing newline to bridge the two contracts, not all
-              // trailing whitespace: a blank line the user left inside their
-              // frontmatter is theirs to keep.
-              const raw = fmDoc.toString();
-              const next = raw.endsWith("\n") ? raw.slice(0, -1) : raw;
-              frontmatterRef.current =
-                next === "" && loaded.frontmatter === null ? null : next;
-              setFrontmatter(next);
-              autosave.schedule();
-            }}
-          />
+          <>
+            <div className="frontmatter-mode">
+              <button type="button" onClick={toggleYamlMode}>
+                {yamlMode ? "Edit with controls" : "Edit as YAML"}
+              </button>
+              {yamlError !== undefined && (
+                <small className="hint" role="alert">
+                  {yamlError}
+                </small>
+              )}
+            </div>
+            {yamlMode ? (
+              <textarea
+                value={frontmatter}
+                spellCheck={false}
+                rows={Math.min(12, frontmatter.split("\n").length + 1)}
+                onChange={(event) => updateFrontmatter(event.target.value)}
+                aria-label="Frontmatter"
+              />
+            ) : (
+              <FrontmatterFields
+                schema={schema}
+                document={fmDoc}
+                onChange={() => {
+                  // `fmDoc.toString()` returns YAML text, which correctly ends in
+                  // a trailing newline. `frontmatterRef` instead holds frontmatter
+                  // the way `splitFrontmatter` (packages/markdown/src/parse.ts)
+                  // yields it, with that trailing newline already excluded, since
+                  // `serializeDocument` (packages/markdown/src/serialize.ts) adds
+                  // its own when writing the document back out. Strip exactly one
+                  // trailing newline to bridge the two contracts, not all
+                  // trailing whitespace: a blank line the user left inside their
+                  // frontmatter is theirs to keep.
+                  const raw = fmDoc.toString();
+                  const next = raw.endsWith("\n") ? raw.slice(0, -1) : raw;
+                  frontmatterRef.current =
+                    next === "" && loaded.frontmatter === null ? null : next;
+                  setFrontmatter(next);
+                  autosave.schedule();
+                }}
+              />
+            )}
+          </>
         ) : (
           <>
             {rawReason !== undefined && (
