@@ -86,6 +86,10 @@ describe("toControlValue", () => {
   ])("%s reads %s as %s", (kind, value, expected) => {
     expect(toControlValue(kind as never, value)).toEqual(expected);
   });
+
+  it("shows an object rather than blanking it", () => {
+    expect(toControlValue("raw", { src: "./a.png" })).toBe('{"src":"./a.png"}');
+  });
 });
 
 describe("toYamlValue", () => {

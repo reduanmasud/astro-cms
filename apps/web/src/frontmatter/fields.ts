@@ -84,7 +84,10 @@ export function toControlValue(
   if (kind === "checkbox") return value === true;
   if (kind === "tags") return Array.isArray(value) ? value.map(String) : [];
   if (value === undefined || value === null) return "";
-  if (typeof value === "object") return "";
+  // Show objects as JSON to preserve data visibility in raw controls.
+  // ESLint's no-base-to-string would reject String() for objects,
+  // so JSON.stringify avoids data loss while keeping linting clean.
+  if (typeof value === "object") return JSON.stringify(value);
   // eslint-disable-next-line @typescript-eslint/no-base-to-string
   return String(value);
 }
