@@ -1,5 +1,5 @@
-import type { JSX } from "react";
-import type { ControlKind } from "./fields.ts";
+import { useState, type JSX } from "react";
+import { joinTags, splitTags, type ControlKind } from "./fields.ts";
 
 /** One labelled control. The label is the field name, as the schema has it. */
 export interface ControlProps {
@@ -47,22 +47,7 @@ export function Control({
 
   if (kind === "tags") {
     const tags = Array.isArray(value) ? value : [];
-    return (
-      <input
-        id={id}
-        type="text"
-        value={tags.join(", ")}
-        placeholder="comma separated"
-        onChange={(event) =>
-          onChange(
-            event.target.value
-              .split(",")
-              .map((tag) => tag.trim())
-              .filter((tag) => tag !== ""),
-          )
-        }
-      />
-    );
+    return <TagsControl id={id} value={tags} onChange={onChange} />;
   }
 
   if (kind === "textarea" || kind === "raw") {
@@ -94,6 +79,43 @@ export function Control({
       type={type}
       value={String(value)}
       onChange={(event) => onChange(event.target.value)}
+    />
+  );
+}
+
+interface TagsControlProps {
+  id: string;
+  value: string[];
+  onChange: (value: string[]) => void;
+}
+
+/**
+ * Its own component, not a branch inside `Control`: it needs `useState` for
+ * the text being typed, and the React Compiler's rules forbid a hook behind
+ * a conditional branch of a plain function.
+ *
+ * Same reasoning as `FrontmatterFields`' `rawText`: driving the input's
+ * `value` straight from the parsed `tags` array means a keystroke that
+ * doesn't yet change the array — typing the comma after "astro", or a
+ * space after it — leaves the `value` prop unchanged, and React then
+ * resets the DOM node back to that unchanged prop, erasing the very
+ * character just typed. Holding the typed text here breaks that loop: the
+ * text always updates, and `onChange` still fires with the parsed tags on
+ * every keystroke.
+ */
+function TagsControl({ id, value, onChange }: TagsControlProps): JSX.Element {
+  const [text, setText] = useState<string>();
+
+  return (
+    <input
+      id={id}
+      type="text"
+      value={text ?? joinTags(value)}
+      placeholder="comma separated"
+      onChange={(event) => {
+        setText(event.target.value);
+        onChange(splitTags(event.target.value));
+      }}
     />
   );
 }

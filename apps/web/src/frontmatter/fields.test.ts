@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { SchemaField } from "../api.ts";
 import {
+  joinTags,
   planField,
   planFields,
+  splitTags,
   toControlValue,
   toYamlValue,
 } from "./fields.ts";
@@ -70,6 +72,26 @@ describe("planField", () => {
 
   it("keeps the date picker for an empty date", () => {
     expect(planField(field({ type: "date" }), undefined).kind).toBe("date");
+  });
+});
+
+describe("splitTags", () => {
+  it("splits, trims and drops empties", () => {
+    expect(splitTags("astro, cms")).toEqual(["astro", "cms"]);
+  });
+
+  it("keeps one tag when a trailing comma has nothing after it", () => {
+    expect(splitTags("astro,")).toEqual(["astro"]);
+  });
+
+  it("returns no tags for an empty string", () => {
+    expect(splitTags("")).toEqual([]);
+  });
+
+  it("round-trips with joinTags", () => {
+    const tags = ["astro", "cms"];
+
+    expect(splitTags(joinTags(tags))).toEqual(tags);
   });
 });
 

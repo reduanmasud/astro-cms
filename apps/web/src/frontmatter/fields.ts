@@ -123,3 +123,20 @@ export function toYamlValue(
   }
   return String(raw);
 }
+
+/**
+ * The tag input's text, parsed. Trims each tag and drops empties, so a
+ * trailing comma (still being typed towards a second tag) yields the tags
+ * typed so far rather than an error.
+ */
+export function splitTags(text: string): string[] {
+  return text
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter((tag) => tag !== "");
+}
+
+/** The tags array as the text a person edits. */
+export function joinTags(tags: readonly string[]): string {
+  return tags.join(", ");
+}
