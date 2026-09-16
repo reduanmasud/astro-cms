@@ -1,0 +1,197 @@
+import type { SchemaField } from "../api.ts";
+import type { FrontmatterValue } from "./document.ts";
+
+/**
+ * Turning a collection's schema into controls. Pure: every decision about
+ * which control a field gets, and how a control's value becomes YAML, lives
+ * here so it can be tested without a browser.
+ */
+
+export type ControlKind =
+  | "text"
+  | "textarea"
+  | "email"
+  | "url"
+  | "number"
+  | "checkbox"
+  | "date"
+  | "select"
+  | "tags"
+  | "raw";
+
+export interface FieldPlan {
+  readonly field: SchemaField;
+  readonly kind: ControlKind;
+  /** Why this field fell back, when `kind` is "raw". */
+  readonly reason?: string;
+}
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Types a wrong control would serve worse than no control at all. */
+const NO_CONTROL = new Set([
+  "literal",
+  "object",
+  "image",
+  "reference",
+  "union",
+  "unknown",
+]);
+
+/**
+ * The value as text, for comparing it against a control's value space
+ * (`ISO_DATE`, an enum's declared `values`, `Number.isNaN`). Empty for an
+ * absent value, so an unset field never gets forced into a fallback.
+ */
+function asText(value: unknown): string {
+  if (value === undefined || value === null) return "";
+  // ESLint's no-base-to-string would reject String() for an object; a
+  // frontmatter value never legitimately is one here, but the parameter
+  // type is `unknown`, so this stays consistent with `toControlValue` below.
+  if (typeof value === "object") return JSON.stringify(value);
+  // eslint-disable-next-line @typescript-eslint/no-base-to-string
+  return String(value);
+}
+
+export function planField(field: SchemaField, value?: unknown): FieldPlan {
+  if (field.type === "enum") {
+    // A <select> whose current value is not one of its <option>s renders
+    // with nothing selected — indistinguishable from the "—" placeholder,
+    // so a required, filled-in field would look completely unset with
+    // nothing explaining why. The data still sits there intact underneath.
+    const text = asText(value);
+    if (text !== "" && !(field.values ?? []).some((v) => String(v) === text)) {
+      return {
+        field,
+        kind: "raw",
+        reason: `enum value "${text}" is not one of the declared values`,
+      };
+    }
+    return { field, kind: "select" };
+  }
+  if (field.type === "array") {
+    return field.items?.type === "string"
+      ? { field, kind: "tags" }
+      : {
+          field,
+          kind: "raw",
+          reason: `an array of ${field.items?.type ?? "unknown"} has no control yet`,
+        };
+  }
+  if (NO_CONTROL.has(field.type)) {
+    return { field, kind: "raw", reason: `${field.type} has no control yet` };
+  }
+  if (field.type === "number") {
+    // <input type="number"> sanitises away any value that is not a valid
+    // floating-point number, rendering blank — the same silent-unset look
+    // as the date and enum fallbacks below, with the data still intact.
+    const text = asText(value);
+    if (text !== "" && Number.isNaN(Number(text))) {
+      return {
+        field,
+        kind: "raw",
+        reason: `number value "${text}" is not numeric`,
+      };
+    }
+    return { field, kind: "number" };
+  }
+  if (field.type === "boolean") return { field, kind: "checkbox" };
+  if (field.type === "date") {
+    // <input type="date"> requires YYYY-MM-DD. A hand-written value like
+    // "Jul 08 2023" would render as a silently blank picker with the data
+    // still intact underneath, so it falls back to the raw box instead.
+    // Compare against `String(value)` rather than requiring a string
+    // already: a bare `20260115` parses as a YAML *number*, and would
+    // otherwise reach the picker and render blank the same way.
+    const text = asText(value);
+    if (text !== "" && !ISO_DATE.test(text)) {
+      return {
+        field,
+        kind: "raw",
+        reason: `date value "${text}" is not in YYYY-MM-DD format`,
+      };
+    }
+    return { field, kind: "date" };
+  }
+
+  if (field.format === "email") return { field, kind: "email" };
+  if (field.format === "url") return { field, kind: "url" };
+  // A value that already spans lines wants room to breathe.
+  return {
+    field,
+    kind:
+      typeof value === "string" && value.includes("\n") ? "textarea" : "text",
+  };
+}
+
+export function planFields(
+  fields: readonly SchemaField[],
+  keys: readonly string[],
+  values: Readonly<Record<string, unknown>>,
+): { planned: FieldPlan[]; unknownKeys: string[] } {
+  const known = new Set(fields.map((field) => field.name));
+  return {
+    planned: fields.map((field) => planField(field, values[field.name])),
+    unknownKeys: keys.filter((key) => !known.has(key)),
+  };
+}
+
+/** The document's value as the control wants it. */
+export function toControlValue(
+  kind: ControlKind,
+  value: unknown,
+): string | boolean | string[] {
+  if (kind === "checkbox") return value === true;
+  if (kind === "tags") return Array.isArray(value) ? value.map(String) : [];
+  if (value === undefined || value === null) return "";
+  // Show objects as JSON to preserve data visibility in raw controls.
+  // ESLint's no-base-to-string would reject String() for objects,
+  // so JSON.stringify avoids data loss while keeping linting clean.
+  if (typeof value === "object") return JSON.stringify(value);
+  // eslint-disable-next-line @typescript-eslint/no-base-to-string
+  return String(value);
+}
+
+/** The control's value as YAML. Undefined means: remove the key. */
+export function toYamlValue(
+  plan: FieldPlan,
+  raw: string | boolean | string[],
+): FrontmatterValue | undefined {
+  const empty = raw === "" || (Array.isArray(raw) && raw.length === 0);
+  // `.nullable()` sets `nullable: true`; `.optional()` only sets
+  // `required: false` and leaves `nullable` unset. Astro schemas
+  // overwhelmingly use `.optional()`, so clearing must remove the key on
+  // either signal — writing "" for an optional, coerced field (e.g.
+  // `z.coerce.date().optional()`) fails the next build. Writing "" is kept
+  // only for a field that is still required, where the "required, still
+  // empty" warning fires and "still saves" is deliberate.
+  if (empty && (plan.field.nullable === true || !plan.field.required)) {
+    return undefined;
+  }
+
+  if (plan.kind === "checkbox") return raw === true;
+  if (plan.kind === "tags") return Array.isArray(raw) ? raw : [];
+  if (plan.kind === "number") {
+    if (raw === "") return "";
+    const parsed = Number(raw);
+    return Number.isNaN(parsed) ? String(raw) : parsed;
+  }
+  return String(raw);
+}
+
+/**
+ * The tag input's text, parsed. Trims each tag and drops empties, so a
+ * trailing comma (still being typed towards a second tag) yields the tags
+ * typed so far rather than an error.
+ */
+export function splitTags(text: string): string[] {
+  return text
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter((tag) => tag !== "");
+}
+
+/** The tags array as the text a person edits. */
+export function joinTags(tags: readonly string[]): string {
+  return tags.join(", ");
+}

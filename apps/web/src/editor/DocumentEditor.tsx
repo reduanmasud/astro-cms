@@ -7,6 +7,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import { useCallback, useEffect, useRef, useState, type JSX } from "react";
 import {
   ApiError,
+  getCollection,
   getDocument,
   getDrift,
   publishDocument,
@@ -15,6 +16,7 @@ import {
   uploadMedia,
   type CmsDocument,
   type DriftReport,
+  type SchemaField,
 } from "../api.ts";
 import { editorExtensions, toEditorContent } from "./extensions.ts";
 import { useCollaboration, type CollabStatus } from "./useCollaboration.ts";
@@ -22,6 +24,11 @@ import { SlashMenu } from "./SlashMenu.tsx";
 import type { SlashMenuState } from "./SlashCommand.ts";
 import { Toolbar } from "./Toolbar.tsx";
 import { useAutosave } from "./useAutosave.ts";
+import { FrontmatterFields } from "../frontmatter/FrontmatterFields.tsx";
+import {
+  parseFrontmatter,
+  type FrontmatterDocument,
+} from "../frontmatter/document.ts";
 
 export interface DocumentEditorProps {
   documentId: string;
@@ -37,7 +44,8 @@ interface Loaded {
 }
 
 /**
- * Editing one draft: Tiptap for the body, a raw YAML box for frontmatter
+ * Editing one draft: Tiptap for the body, schema-driven controls for
+ * frontmatter with a raw YAML fallback when the schema is unavailable
  * (docs/adr/0007-frontmatter-schema-inference.md), and autosave to SQLite.
  */
 export function DocumentEditor({
@@ -52,6 +60,17 @@ export function DocumentEditor({
   const [publishing, setPublishing] = useState(false);
   const [published, setPublished] = useState<string | null>(null);
   const [conflict, setConflict] = useState<DriftReport | null>(null);
+  const [schema, setSchema] = useState<readonly SchemaField[] | null>(null);
+  const [rawReason, setRawReason] = useState<string>();
+  // Gates the frontmatter section only — the body editor stays interactive
+  // throughout. Until the collection request settles, `fmDoc` still holds
+  // the frontmatter parsed from the *original* source, so the first control
+  // edit would overwrite whatever was typed into the raw-textarea fallback
+  // during that window (docs: see the effect below).
+  const [collectionSettled, setCollectionSettled] = useState(false);
+  // State, not a ref: the fallback below reads it during render, which the
+  // React Compiler's ref rule forbids for a ref (react-hooks/refs).
+  const [fmDoc, setFmDoc] = useState<FrontmatterDocument>();
   // Keyed off state, never a ref: reading refs during render is not allowed.
   const collaboration = useCollaboration(documentId, loaded !== null);
   const seeded = useRef(false);
@@ -70,6 +89,11 @@ export function DocumentEditor({
         currentDoc.current = parsed.doc;
         frontmatterRef.current = parsed.frontmatter;
         setFrontmatter(parsed.frontmatter ?? "");
+        const parsedFrontmatter = parseFrontmatter(parsed.frontmatter);
+        setFmDoc(parsedFrontmatter);
+        if (parsedFrontmatter === undefined) {
+          setRawReason("This file's frontmatter is not valid YAML.");
+        }
         setLoaded({
           document,
           doc: parsed.doc,
@@ -78,6 +102,26 @@ export function DocumentEditor({
       })
       .catch((caught: Error) => setError(caught.message));
   }, [documentId]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    let cancelled = false;
+    getCollection(loaded.document.collection)
+      .then(({ collection }) => {
+        if (cancelled) return;
+        if (collection.schema.inferred) setSchema(collection.schema.fields);
+        else setRawReason(collection.schema.reason);
+        setCollectionSettled(true);
+      })
+      .catch((caught: Error) => {
+        if (cancelled) return;
+        setRawReason(caught.message);
+        setCollectionSettled(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [loaded]);
 
   const save = useCallback(async () => {
     const doc = currentDoc.current;
@@ -222,15 +266,46 @@ export function DocumentEditor({
         </button>
       </header>
 
-      <details className="frontmatter" open={frontmatter !== ""}>
-        <summary>Frontmatter (YAML)</summary>
-        <textarea
-          value={frontmatter}
-          spellCheck={false}
-          rows={Math.min(12, frontmatter.split("\n").length + 1)}
-          onChange={(event) => updateFrontmatter(event.target.value)}
-          aria-label="Frontmatter"
-        />
+      <details className="frontmatter" open>
+        <summary>Frontmatter</summary>
+        {!collectionSettled ? (
+          <p className="hint">Loading…</p>
+        ) : schema !== null && fmDoc !== undefined ? (
+          <FrontmatterFields
+            schema={schema}
+            document={fmDoc}
+            onChange={() => {
+              // `fmDoc.toString()` returns YAML text, which correctly ends in
+              // a trailing newline. `frontmatterRef` instead holds frontmatter
+              // the way `splitFrontmatter` (packages/markdown/src/parse.ts)
+              // yields it, with that trailing newline already excluded, since
+              // `serializeDocument` (packages/markdown/src/serialize.ts) adds
+              // its own when writing the document back out. Strip exactly one
+              // trailing newline to bridge the two contracts, not all
+              // trailing whitespace: a blank line the user left inside their
+              // frontmatter is theirs to keep.
+              const raw = fmDoc.toString();
+              const next = raw.endsWith("\n") ? raw.slice(0, -1) : raw;
+              frontmatterRef.current =
+                next === "" && loaded.frontmatter === null ? null : next;
+              setFrontmatter(next);
+              autosave.schedule();
+            }}
+          />
+        ) : (
+          <>
+            {rawReason !== undefined && (
+              <p className="hint">{rawReason} Editing it as YAML instead.</p>
+            )}
+            <textarea
+              value={frontmatter}
+              spellCheck={false}
+              rows={Math.min(12, frontmatter.split("\n").length + 1)}
+              onChange={(event) => updateFrontmatter(event.target.value)}
+              aria-label="Frontmatter"
+            />
+          </>
+        )}
       </details>
 
       {published !== null && (

@@ -65,9 +65,13 @@ editing it at all.
 
 Two implementation details this rests on, both measured rather than assumed:
 
-- **`toString()` must pass `{ flowCollectionPadding: false }`.** Without it,
-  `tags: [astro, cms]` becomes `tags: [ astro, cms ]` on any save at all —
-  even one that changes nothing else in the file.
+- **`toString()` must pass `{ flowCollectionPadding: false, lineWidth: 0 }`.**
+  Without the first, `tags: [astro, cms]` becomes `tags: [ astro, cms ]` on
+  any save at all — even one that changes nothing else in the file. Without
+  the second, `yaml`'s default 80-column width reflows any long scalar (a
+  one-line `description`, say) across multiple lines on every save, which is
+  the more consequential of the two: it would put a reflow diff next to
+  whatever key the person actually meant to change.
 - **An empty document stringifies to `"null\n"`, not `""`.** A post with no
   frontmatter must keep having none rather than gaining a literal `null`.
 
@@ -96,6 +100,16 @@ a media picker that does not exist yet.
 A `nullable` field may be cleared. A required field is marked; a required
 field left empty shows a warning and **still saves** — a draft is allowed to
 be unfinished, and refusing to save would lose work.
+
+**A control also falls back when the file's value doesn't fit its value
+space**, even for one of the five types above: a `date` not in
+`YYYY-MM-DD`, an `enum` value outside its declared `values`, or a `number`
+that isn't numeric. Each of these controls renders such a value as blank
+rather than erroring — indistinguishable, for a required field, from the
+field being unset, with nothing explaining why and the data sitting there
+intact underneath. The raw-box fallback applies here too, labelled with the
+reason, rather than leaving the person looking at a control that lies about
+the file's contents.
 
 ## Unknown keys
 

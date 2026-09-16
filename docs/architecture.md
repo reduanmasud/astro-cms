@@ -76,16 +76,16 @@ in a service, not in the tool.
 
 ## Sources of truth
 
-| Data                         | Source of truth                        | Notes                                            |
-| ---------------------------- | -------------------------------------- | ------------------------------------------------ |
-| Published Markdown/MDX       | GitHub `main` branch                   | The CMS never writes to `main` directly.         |
-| In-progress drafts           | SQLite (Markdown source)               | Drafting never calls GitHub write APIs.          |
-| Branch / PR per content item | SQLite, mirrored from GitHub           | One content item has one branch and one PR.      |
-| Media binaries               | S3-compatible bucket                   | Only object keys and metadata live in SQLite.    |
-| Media references             | SQLite, recomputed                     | Built from drafts, open CMS PRs, and `main`.     |
-| Sessions                     | SQLite                                 | Browser sessions only. MCP uses a static token.  |
-| Collaborators                | SQLite                                 | Display-name identity, reused across sessions.   |
-| Content schema               | `content.config.ts` + existing entries | Raw frontmatter editor when inference is unsafe. |
+| Data                         | Source of truth                        | Notes                                             |
+| ---------------------------- | -------------------------------------- | ------------------------------------------------- |
+| Published Markdown/MDX       | GitHub `main` branch                   | The CMS never writes to `main` directly.          |
+| In-progress drafts           | SQLite (Markdown source)               | Drafting never calls GitHub write APIs.           |
+| Branch / PR per content item | SQLite, mirrored from GitHub           | One content item has one branch and one PR.       |
+| Media binaries               | S3-compatible bucket                   | Only object keys and metadata live in SQLite.     |
+| Media references             | SQLite, recomputed                     | Built from drafts, open CMS PRs, and `main`.      |
+| Sessions                     | SQLite                                 | Browser sessions only. MCP uses a static token.   |
+| Collaborators                | SQLite                                 | Display-name identity, reused across sessions.    |
+| Content schema               | `content.config.ts` + existing entries | Schema-driven controls, raw YAML as the fallback. |
 
 ## Core flows
 
@@ -117,9 +117,14 @@ Collaboration is live editing, presence, and cursors only
 - Imports, exports, and unsupported JSX/MDX components become **opaque,
   read-only blocks** whose source is preserved byte-for-byte
   ([ADR-0006](adr/0006-mdx-opaque-blocks.md)).
-- Frontmatter fields are inferred from `content.config.ts` and existing entries.
-  When inference is not safe, the UI falls back to a raw YAML editor
-  ([ADR-0007](adr/0007-frontmatter-schema-inference.md)).
+- Frontmatter fields render as controls generated from the collection's
+  schema — inferred from `content.config.ts` and existing entries — and are
+  edited through a YAML document that keeps the comments, order, and
+  quoting of every key not touched. A field whose type has no control, a
+  key the schema does not mention, or a schema that cannot be inferred at
+  all each fall back to raw YAML, narrower at each step
+  ([ADR-0007](adr/0007-frontmatter-schema-inference.md),
+  [ADR-0022](adr/0022-frontmatter-controls.md)).
 
 ### Publishing
 

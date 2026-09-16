@@ -31,6 +31,12 @@ imports/exports, JSX, expressions, raw HTML, footnote definitions, images —
 is kept as a protected node holding the exact source, shown read-only, and
 written back unchanged.
 
+That "never reformatted" is a statement about this package, not about the
+CMS as a whole: the web editor has since gained schema-driven frontmatter
+controls that deliberately edit that YAML through a document API, with a
+narrower preservation guarantee of their own
+([ADR-0022](0022-frontmatter-controls.md)).
+
 ## Alternatives Considered
 
 ### Tiptap's Markdown support

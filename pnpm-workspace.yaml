@@ -57,6 +57,7 @@ catalog:
   typescript-eslint: ^8.70.0
   vite: ^8.3.0
   vitest: ^5.0.0
+  yaml: ^2.9.1
 
 # better-sqlite3 ships prebuilt binaries for every supported platform inside
 # the package, so its node-gyp fallback never needs to run.
