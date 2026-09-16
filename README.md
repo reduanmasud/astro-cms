@@ -151,6 +151,28 @@ webhook extension against `POST /api/collab/webhook` with the `create` and
 `change` events. `apps/collab/src/index.ts` is that setup in about
 fifty lines. See [ADR-0016](docs/adr/0016-collaboration-service.md).
 
+## Frontmatter
+
+Frontmatter renders as controls generated from the collection's schema: a
+checkbox for a boolean, a date picker for a date, a select for an enum, a tag
+input for an array of strings, and a text input (a textarea once a value
+spans lines) for a plain string. A field whose type has no control yet —
+`object`, `image`, `reference`, `union`, `literal`, or an array of anything
+but strings — gets a raw YAML box for that one field, labelled with why.
+Keys in the file the schema does not mention appear, still editable, in an
+"Other fields" box.
+
+An edit writes back through a YAML document rather than a parse-and-restringify
+round trip, so comments, key order, and quoting on every key nobody touched
+survive a save. Whitespace right before an inline comment does not — that is
+the one thing this cannot preserve.
+
+The whole thing falls back to today's raw YAML box when the collection's
+schema cannot be inferred, the collection request fails, or the file's
+frontmatter is not valid YAML at all
+([ADR-0007](docs/adr/0007-frontmatter-schema-inference.md),
+[ADR-0022](docs/adr/0022-frontmatter-controls.md)).
+
 ## Media
 
 Images are stored in an S3-compatible bucket (AWS S3, Cloudflare R2, MinIO)
