@@ -120,6 +120,26 @@ describe("parseFrontmatter", () => {
     expect(parseFrontmatter(POST)?.getRaw("heroImage")).toBe("");
   });
 
+  it("round-trips a multi-line block sequence through the raw path", () => {
+    const doc = parseFrontmatter(
+      ["title: Hi", "tags:", "  - astro", "  - cms", ""].join("\n"),
+    );
+
+    expect(doc?.getRaw("tags")).toBe("- astro\n- cms");
+    expect(doc?.setRaw("tags", "- one\n- two\n- three")).toBe(true);
+    expect(doc?.get("tags")).toEqual(["one", "two", "three"]);
+    expect(doc?.toString()).toBe(
+      "title: Hi\ntags:\n  - one\n  - two\n  - three\n",
+    );
+  });
+
+  it("writes a raw value for a key that was previously absent", () => {
+    const doc = parseFrontmatter("title: Hi\n");
+
+    expect(doc?.setRaw("heroImage", "./a.png")).toBe(true);
+    expect(doc?.get("heroImage")).toBe("./a.png");
+  });
+
   it("leaves a long line alone when another key changes", () => {
     const long = [
       "title: Hi",
