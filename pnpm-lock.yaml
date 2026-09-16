@@ -314,6 +314,9 @@ catalogs:
     y-prosemirror:
       specifier: ^1.3.7
       version: 1.3.7
+    yaml:
+      specifier: ^2.9.1
+      version: 2.9.1
     yjs:
       specifier: ^13.6.32
       version: 13.6.32
@@ -471,6 +474,9 @@ importers:
       y-prosemirror:
         specifier: 'catalog:'
         version: 1.3.7(prosemirror-model@1.25.11)(prosemirror-state@1.4.4)(prosemirror-view@1.42.3)(y-protocols@1.0.7(yjs@13.6.32))(yjs@13.6.32)
+      yaml:
+        specifier: 'catalog:'
+        version: 2.9.1
       yjs:
         specifier: 'catalog:'
         version: 13.6.32
@@ -486,7 +492,7 @@ importers:
         version: 19.3.0(@types/react@19.3.0)
       '@vitejs/plugin-react':
         specifier: 'catalog:'
-        version: 6.1.1(vite@8.3.0(@types/node@24.13.4))
+        version: 6.1.1(vite@8.3.0(@types/node@24.13.4)(yaml@2.9.1))
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.0(vitest@5.0.0)
@@ -498,7 +504,7 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.0(@types/node@24.13.4)
+        version: 8.3.0(@types/node@24.13.4)(yaml@2.9.1)
       vitest:
         specifier: 'catalog:'
         version: 5.0.0(@types/node@24.13.4)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1)(vite@8.3.0(@types/node@24.13.4))
@@ -2635,6 +2641,11 @@ packages:
   yallist@3.1.1:
     resolution: {integrity: sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g==}
 
+  yaml@2.9.1:
+    resolution: {integrity: sha512-3NxN8+78OdzbT7C/WjGsyfPAtJaN3FNDsWxv7Y7mcDsT/oOmgW8BpyQQFFBnvZE3j9Y2Sdz1ULFLezL7Eb2yFw==}
+    engines: {node: '>= 14.6'}
+    hasBin: true
+
   yjs@13.6.32:
     resolution: {integrity: sha512-lfiJIIC4Xayt5ItynE407ehlE03pCjeOc4hkR4yxxvvNJ4kuiN25B0g+Qp8XagYz361LLL7DCzR5bvFJ81QKtQ==}
     engines: {node: '>=16.0.0', npm: '>=8.0.0'}
@@ -3647,10 +3658,10 @@ snapshots:
   '@typescript/typescript-win32-x64@7.0.2':
     optional: true
 
-  '@vitejs/plugin-react@6.1.1(vite@8.3.0(@types/node@24.13.4))':
+  '@vitejs/plugin-react@6.1.1(vite@8.3.0(@types/node@24.13.4)(yaml@2.9.1))':
     dependencies:
       '@rolldown/pluginutils': 1.0.1
-      vite: 8.3.0(@types/node@24.13.4)
+      vite: 8.3.0(@types/node@24.13.4)(yaml@2.9.1)
 
   '@vitest/coverage-v8@5.0.0(vitest@5.0.0)':
     dependencies:
@@ -3677,7 +3688,7 @@ snapshots:
       estree-walker: 3.0.3
       magic-string: 1.3.1
     optionalDependencies:
-      vite: 8.3.0(@types/node@24.13.4)
+      vite: 8.3.0(@types/node@24.13.4)(yaml@2.9.1)
 
   '@vitest/spy@5.0.0': {}
 
@@ -4873,7 +4884,7 @@ snapshots:
       '@types/unist': 3.0.3
       unist-util-stringify-position: 4.0.0
 
-  vite@8.3.0(@types/node@24.13.4):
+  vite@8.3.0(@types/node@24.13.4)(yaml@2.9.1):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.7
@@ -4883,6 +4894,7 @@ snapshots:
     optionalDependencies:
       '@types/node': 24.13.4
       fsevents: 2.3.3
+      yaml: 2.9.1
 
   vitest@5.0.0(@types/node@24.13.4)(@vitest/coverage-v8@5.0.0)(jsdom@30.0.1)(vite@8.3.0(@types/node@24.13.4)):
     dependencies:
@@ -4898,7 +4910,7 @@ snapshots:
       tinybench: 6.1.4
       tinyexec: 1.3.0
       tinyglobby: 0.2.17
-      vite: 8.3.0(@types/node@24.13.4)
+      vite: 8.3.0(@types/node@24.13.4)(yaml@2.9.1)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 24.13.4
@@ -4965,6 +4977,8 @@ snapshots:
       yjs: 13.6.32
 
   yallist@3.1.1: {}
+
+  yaml@2.9.1: {}
 
   yjs@13.6.32:
     dependencies:
