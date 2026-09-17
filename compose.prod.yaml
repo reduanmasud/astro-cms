@@ -57,7 +57,10 @@ services:
       dockerfile: apps/web/Dockerfile
     restart: unless-stopped
     ports:
-      - "80:80"
+      # Unlike hocuspocus/minio's host ports, nothing else in .env needs to
+      # stay in sync with this one: the CMS has no "public URL" setting of
+      # its own: you just open whatever port you publish it on.
+      - "${WEB_HOST_PORT:-80}:80"
     depends_on:
       server:
         condition: service_healthy

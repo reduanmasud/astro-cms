@@ -107,9 +107,13 @@ You can also point `HOCUSPOCUS_*`/`S3_*` at your own HocusPocus server or
 S3/R2 bucket instead of the bundled services — either way, `server` only
 enables that feature once its env vars are non-empty.
 
-`web` publishes port 80; put a TLS-terminating reverse proxy (Caddy,
-Traefik, nginx) in front of it for a real deployment, since nothing in this
-file terminates HTTPS itself.
+`web` publishes port 80 by default (override with `WEB_HOST_PORT` in `.env`
+if something else already holds it); put a TLS-terminating reverse proxy
+(Caddy, Traefik, nginx) in front of it for a real deployment, since nothing
+in this file terminates HTTPS itself. `HOCUSPOCUS_HOST_PORT`,
+`S3_HOST_PORT`, and `S3_CONSOLE_HOST_PORT` are the same escape hatch for the
+optional services' ports — see `.env.example` for how each pairs with its
+matching `*_PUBLIC_URL`.
 
 ## Develop on your machine
 
