@@ -2,9 +2,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ApiError,
   chooseDisplayName,
+  deleteMedia,
+  getMediaReferences,
   getRepositoryStatus,
   getSession,
   getDrift,
+  listMedia,
   login,
   logout,
   publishDocument,
@@ -217,5 +220,53 @@ describe("getDrift and resyncDocument", () => {
       baseCommitSha: "sha0009",
     });
     expect(lastRequest(resyncMock).init?.method).toBe("POST");
+  });
+});
+
+describe("media", () => {
+  it("asks for one page of unused media", async () => {
+    const fetchMock = mockFetch(200, { media: [] });
+
+    await listMedia({ unused: true, limit: 24, offset: 24 });
+
+    expect(lastRequest(fetchMock).path).toBe(
+      "/api/media?unused=true&limit=24&offset=24",
+    );
+  });
+
+  it("sends no query string when nothing is filtered", async () => {
+    const fetchMock = mockFetch(200, { media: [] });
+
+    await listMedia();
+
+    expect(lastRequest(fetchMock).path).toBe("/api/media");
+  });
+
+  it("omits the filter rather than sending unused=false", async () => {
+    const fetchMock = mockFetch(200, { media: [] });
+
+    await listMedia({ unused: false, limit: 24 });
+
+    expect(lastRequest(fetchMock).path).toBe("/api/media?limit=24");
+  });
+
+  it("asks where one file is used", async () => {
+    const fetchMock = mockFetch(200, {
+      references: { drafts: [], git: [] },
+    });
+
+    await getMediaReferences("m1");
+
+    expect(lastRequest(fetchMock).path).toBe("/api/media/m1/references");
+  });
+
+  it("deletes one file", async () => {
+    const fetchMock = mockFetch(204);
+
+    await deleteMedia("m1");
+
+    const { path, init } = lastRequest(fetchMock);
+    expect(path).toBe("/api/media/m1");
+    expect(init).toMatchObject({ method: "DELETE" });
   });
 });

@@ -4,6 +4,7 @@ import { CollectionBrowser } from "./CollectionBrowser.tsx";
 import { DisplayNameForm } from "./DisplayNameForm.tsx";
 import { DocumentEditor } from "./editor/DocumentEditor.tsx";
 import { LoginForm } from "./LoginForm.tsx";
+import { MediaLibrary } from "./media/MediaLibrary.tsx";
 import { RepositoryPanel } from "./RepositoryPanel.tsx";
 
 type State =
@@ -13,7 +14,8 @@ type State =
   | { status: "signed-in"; session: Session };
 
 /** Which screen the signed-in user is on. */
-type View = { name: "browse" } | { name: "edit"; documentId: string };
+type View =
+  { name: "browse" } | { name: "edit"; documentId: string } | { name: "media" };
 
 export function App(): JSX.Element {
   const [state, setState] = useState<State>({ status: "loading" });
@@ -89,6 +91,11 @@ function Shell({
       <header className="topbar">
         <strong>Astro CMS</strong>
         <span className="spacer" />
+        {view.name === "browse" && (
+          <button type="button" onClick={() => onView({ name: "media" })}>
+            Media
+          </button>
+        )}
         <span>{collaborator.name}</span>
         <button type="button" onClick={onLogout}>
           Sign out
@@ -100,6 +107,8 @@ function Shell({
           collaboratorName={collaborator.name}
           onClose={() => onView({ name: "browse" })}
         />
+      ) : view.name === "media" ? (
+        <MediaLibrary onClose={() => onView({ name: "browse" })} />
       ) : (
         <main className="content">
           <CollectionBrowser

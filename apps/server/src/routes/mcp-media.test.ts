@@ -73,4 +73,23 @@ describe("MCP media tools", () => {
     expect(body?.result?.isError).toBe(true);
     expect(body?.result?.content?.[0]?.text).toMatch(/not configured/i);
   });
+
+  it("reports where a media file is used", async () => {
+    await call("upload_media", { url: "https://example.com/hero.png" });
+    const listed = JSON.parse((await call("list_media", {})).text) as {
+      id: string;
+    }[];
+    const mediaId = listed[0]?.id ?? "";
+
+    const result = await call("get_media_references", { id: mediaId });
+
+    expect(result.isError).toBeFalsy();
+    expect(JSON.parse(result.text)).toEqual({ drafts: [], git: [] });
+  });
+
+  it("refuses references for a media file that does not exist", async () => {
+    const result = await call("get_media_references", { id: "missing" });
+
+    expect(result.isError).toBe(true);
+  });
 });

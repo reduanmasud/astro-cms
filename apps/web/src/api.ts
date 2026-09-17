@@ -251,6 +251,53 @@ export function uploadMedia(
   return request("/api/media", { method: "POST", body });
 }
 
+export interface DraftReference {
+  documentId: string;
+  collection: string;
+  path: string;
+}
+
+export interface RepoReference {
+  ref: string;
+  path: string;
+}
+
+export interface MediaUsage {
+  drafts: DraftReference[];
+  git: RepoReference[];
+}
+
+export interface ListMediaOptions {
+  /** Only files nothing references — no draft, no branch. */
+  unused?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+export function listMedia(
+  options: ListMediaOptions = {},
+): Promise<{ media: MediaItem[] }> {
+  const query = new URLSearchParams();
+  // Only `unused=true` means anything to the server; omit it otherwise
+  // rather than sending `unused=false`, which reads as a different filter.
+  if (options.unused === true) query.set("unused", "true");
+  if (options.limit !== undefined) query.set("limit", String(options.limit));
+  if (options.offset !== undefined) query.set("offset", String(options.offset));
+  // `toString()`, not `.size`: the latter is newer than this project's DOM lib.
+  const suffix = query.toString();
+  return request(`/api/media${suffix === "" ? "" : `?${suffix}`}`);
+}
+
+export function getMediaReferences(
+  id: string,
+): Promise<{ references: MediaUsage }> {
+  return request(`/api/media/${encodeURIComponent(id)}/references`);
+}
+
+export function deleteMedia(id: string): Promise<void> {
+  return request(`/api/media/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
 // --- Publishing --------------------------------------------------------------
 
 export interface PublishedPullRequest {

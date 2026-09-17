@@ -301,7 +301,7 @@ export function registerTools(server: McpServer, deps: McpDeps): void {
     "list_media",
     {
       description:
-        "Stored media, newest first. `unused` lists only files no draft references.",
+        "Stored media, newest first. `unused` lists only files nothing references—neither a draft nor a branch.",
       inputSchema: fromJsonSchema<{
         unused?: boolean;
         limit?: number;
@@ -330,6 +330,20 @@ export function registerTools(server: McpServer, deps: McpDeps): void {
       }),
     },
     ({ id }) => run(() => deps.media.get(id)),
+  );
+
+  server.registerTool(
+    "get_media_references",
+    {
+      description:
+        "Where one media file is used: the drafts that reference it, and the repository refs and paths that do.",
+      inputSchema: fromJsonSchema<{ id: string }>({
+        type: "object",
+        properties: { id: { type: "string" } },
+        required: ["id"],
+      }),
+    },
+    ({ id }) => run(() => deps.media.references(id)),
   );
 
   server.registerTool(

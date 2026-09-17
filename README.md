@@ -204,6 +204,15 @@ The CMS tracks which drafts use which file and refuses to delete one that is
 still referenced. Storage credentials never reach the browser
 ([ADR-0017](docs/adr/0017-media-storage.md)).
 
+The web interface has a Media page for browsing everything the bucket
+holds, filtering to files nothing references, and deleting one at a time.
+Selecting a file shows which drafts and branches use it, and delete stays
+disabled until that answer comes back empty. There is no upload here:
+images are still added by pasting or dropping them into a post, because
+collection removes anything that stays unreferenced past the grace period,
+and a file uploaded here "for later" would be removed the same way
+([ADR-0023](docs/adr/0023-media-library.md)).
+
 Unused files are deleted automatically, `MEDIA_GC_GRACE_DAYS` (default 7,
 minimum 1) after they were last seen with no reference, and only once no
 draft, no open CMS pull request, and not the base branch refers to them any

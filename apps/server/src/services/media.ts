@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
-import type { MediaRecord, MediaRepository } from "../db/media-repository.ts";
+import type {
+  MediaRecord,
+  MediaRepository,
+  MediaUsage,
+} from "../db/media-repository.ts";
 import type { CollaboratorRef } from "../documents/model.ts";
 import {
   inspectUpload,
@@ -65,6 +69,8 @@ export interface MediaService {
     actor: CollaboratorRef | null,
   ): Promise<UploadedMedia>;
   get(id: string): MediaItem;
+  /** Where a file is used. Throws `not_found` when there is no such file. */
+  references(id: string): MediaUsage;
   list(options?: ListMediaOptions): MediaItem[];
   /** Removes the object and its metadata. Refuses while anything still references it. */
   delete(id: string): Promise<void>;
@@ -158,6 +164,13 @@ export function createMediaService({
 
     get(id) {
       return toItem(find(id));
+    },
+
+    references(id) {
+      // `find` throws not_found, so a bad id cannot come back as "unused" —
+      // which is the one answer that would make deletion look safe.
+      find(id);
+      return repository.findReferences(id);
     },
 
     list(options = {}) {

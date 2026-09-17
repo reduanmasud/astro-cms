@@ -93,6 +93,14 @@ export function mediaRoutes({ media, references }: Deps): Hono<AuthEnv> {
     });
   });
 
+  routes.get("/:id/references", (c) => {
+    // Same reasoning as GET /: draft references are only ever refreshed by
+    // recompute(), so a read that skipped this could tell a stale "unused"
+    // story right after a document was edited elsewhere.
+    references.recompute();
+    return c.json({ references: media.references(c.req.param("id")) });
+  });
+
   routes.delete("/:id", withName, async (c) => {
     references.recompute();
     await media.delete(c.req.param("id"));

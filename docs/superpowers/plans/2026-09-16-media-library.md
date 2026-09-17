@@ -50,66 +50,72 @@ genuinely different types; do not merge them, and do not reuse the name.
 
 - [ ] **Step 1: Write the failing test**
 
-Open `apps/server/src/db/media-repository.test.ts`, read how an existing test seeds a media row and a document, and follow that setup exactly. Append:
+The file has one `describe("media repository git references")` block holding
+`db`, `media`, an `add(id)` helper that inserts a media row, and a
+`beforeEach` that opens an in-memory database. Documents are seeded with
+`createDocumentRepository(db)` — see the existing test "counts drafts and git
+refs together" for the exact insert shape.
+
+Append inside that same `describe`, using those fixtures (this is verbatim —
+`add`, `media` and `db` all already exist):
 
 ```ts
 describe("findReferences", () => {
-  it("reports the drafts and the git refs that use a file", () => {
-    const { repository, db } = setup();
-    seedMedia(repository, "m1");
-    seedDocument(db, {
+  function addDocument(): void {
+    createDocumentRepository(db).insert({
       id: "d1",
       collection: "blog",
-      path: "src/content/blog/hello.mdx",
+      path: "src/content/blog/hello.md",
+      format: "md",
+      slug: "hello",
+      source: "# Hi\n",
+      createdBy: null,
+      createdAt: 1000,
+      baseCommitSha: null,
     });
-    repository.setReferences("d1", ["m1"]);
-    repository.setGitReferences("main", [
-      { mediaId: "m1", path: "src/content/blog/other.mdx" },
+  }
+
+  it("reports the drafts and the git refs that use a file", () => {
+    add("m1");
+    addDocument();
+    media.setReferences("d1", ["m1"]);
+    media.setGitReferences("main", [
+      { mediaId: "m1", path: "src/content/blog/other.md" },
     ]);
 
-    expect(repository.findReferences("m1")).toEqual({
+    expect(media.findReferences("m1")).toEqual({
       drafts: [
         {
           documentId: "d1",
           collection: "blog",
-          path: "src/content/blog/hello.mdx",
+          path: "src/content/blog/hello.md",
         },
       ],
-      git: [{ ref: "main", path: "src/content/blog/other.mdx" }],
+      git: [{ ref: "main", path: "src/content/blog/other.md" }],
     });
   });
 
   it("returns two empty lists for a file nothing uses", () => {
-    const { repository } = setup();
-    seedMedia(repository, "m1");
+    add("m1");
 
-    expect(repository.findReferences("m1")).toEqual({ drafts: [], git: [] });
+    expect(media.findReferences("m1")).toEqual({ drafts: [], git: [] });
   });
 
   it("returns two empty lists for a file that does not exist", () => {
-    const { repository } = setup();
-
-    expect(repository.findReferences("nope")).toEqual({ drafts: [], git: [] });
+    expect(media.findReferences("nope")).toEqual({ drafts: [], git: [] });
   });
 
   it("forgets a draft reference once the document is deleted", () => {
-    const { repository, db } = setup();
-    seedMedia(repository, "m1");
-    seedDocument(db, {
-      id: "d1",
-      collection: "blog",
-      path: "src/content/blog/hello.mdx",
-    });
-    repository.setReferences("d1", ["m1"]);
+    add("m1");
+    addDocument();
+    media.setReferences("d1", ["m1"]);
 
     db.prepare("DELETE FROM documents WHERE id = ?").run("d1");
 
-    expect(repository.findReferences("m1").drafts).toEqual([]);
+    expect(media.findReferences("m1").drafts).toEqual([]);
   });
 });
 ```
-
-If the existing test file has no `setup`, `seedMedia` or `seedDocument` helper under those names, use whatever it does have and keep the assertions identical. Do not invent a new fixture style alongside an existing one.
 
 - [ ] **Step 2: Run the test and watch it fail**
 
@@ -408,58 +414,57 @@ git commit -m "feat: expose media references over MCP"
 
 - [ ] **Step 1: Write the failing test**
 
-Open `apps/web/src/api.test.ts` and find how it stubs `fetch` and asserts the URL an existing function requests. Append these using **that** stub — adapt `fetchMock` to whatever it is called, and keep the assertions as written:
+The file already has two helpers at the top: `mockFetch(status, body)`, which stubs `fetch` and returns the mock, and `lastRequest(fetchMock)`, which returns `{ path, init }` for the most recent call. Use those. Extend the existing import from `./api.ts` with `listMedia`, `getMediaReferences` and `deleteMedia`, then append:
 
 ```ts
 describe("media", () => {
   it("asks for one page of unused media", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ media: [] }));
+    const fetchMock = mockFetch(200, { media: [] });
 
     await listMedia({ unused: true, limit: 24, offset: 24 });
 
-    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+    expect(lastRequest(fetchMock).path).toBe(
       "/api/media?unused=true&limit=24&offset=24",
     );
   });
 
   it("sends no query string when nothing is filtered", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ media: [] }));
+    const fetchMock = mockFetch(200, { media: [] });
 
     await listMedia();
 
-    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/media");
+    expect(lastRequest(fetchMock).path).toBe("/api/media");
   });
 
   it("omits the filter rather than sending unused=false", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ media: [] }));
+    const fetchMock = mockFetch(200, { media: [] });
 
     await listMedia({ unused: false, limit: 24 });
 
-    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/media?limit=24");
+    expect(lastRequest(fetchMock).path).toBe("/api/media?limit=24");
   });
 
   it("asks where one file is used", async () => {
-    fetchMock.mockResolvedValue(
-      jsonResponse({ references: { drafts: [], git: [] } }),
-    );
+    const fetchMock = mockFetch(200, {
+      references: { drafts: [], git: [] },
+    });
 
     await getMediaReferences("m1");
 
-    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/media/m1/references");
+    expect(lastRequest(fetchMock).path).toBe("/api/media/m1/references");
   });
 
   it("deletes one file", async () => {
-    fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+    const fetchMock = mockFetch(204);
 
     await deleteMedia("m1");
 
-    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/media/m1");
-    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ method: "DELETE" });
+    const { path, init } = lastRequest(fetchMock);
+    expect(path).toBe("/api/media/m1");
+    expect(init).toMatchObject({ method: "DELETE" });
   });
 });
 ```
-
-`jsonResponse` stands in for whatever helper the file already uses to build a stub response; if it has none, build a `Response` with `JSON.stringify` inline.
 
 The third test is the one that matters most: `unused=false` is a different filter to the server than no filter at all, so emitting it would silently change what the page shows.
 

@@ -336,6 +336,75 @@ describe("media API", () => {
     });
   });
 
+  describe("GET /api/media/:id/references", () => {
+    it("reports where a media file is used", async () => {
+      const uploaded = await read(await upload(png()));
+      const mediaId = uploaded.media?.id ?? "";
+
+      const response = await requestJson(
+        harness.app,
+        cookie,
+        "GET",
+        `/api/media/${mediaId}/references`,
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        references: { drafts: [], git: [] },
+      });
+    });
+
+    it("refuses references for a media file that does not exist", async () => {
+      const response = await requestJson(
+        harness.app,
+        cookie,
+        "GET",
+        "/api/media/missing/references",
+      );
+
+      expect(response.status).toBe(404);
+    });
+
+    it("reflects a draft reference added after the last recompute", async () => {
+      // Draft references are only ever refreshed by recompute() — there is
+      // no write-time hook. GET /:id/references must trigger that refresh
+      // itself, or a file just wired into a draft still reads as unused.
+      const uploaded = await read(await upload(png()));
+      const mediaId = uploaded.media?.id ?? "";
+
+      // An unrelated earlier read (e.g. GET /) already ran a recompute
+      // before this draft existed, so any per-request cache would be stale.
+      await requestJson(harness.app, cookie, "GET", "/api/media");
+
+      await requestJson(harness.app, cookie, "POST", "/api/documents", {
+        collection: "blog",
+        path: "src/content/blog/hello.md",
+      });
+      const drafts = (await (
+        await requestJson(harness.app, cookie, "GET", "/api/documents")
+      ).json()) as { documents: { id: string }[] };
+      await requestJson(
+        harness.app,
+        cookie,
+        "PATCH",
+        `/api/documents/${drafts.documents[0]?.id ?? ""}`,
+        { source: `![x](${uploaded.media?.url ?? ""})` },
+      );
+
+      const response = await requestJson(
+        harness.app,
+        cookie,
+        "GET",
+        `/api/media/${mediaId}/references`,
+      );
+
+      const body = (await response.json()) as {
+        references: { drafts: unknown[]; git: unknown[] };
+      };
+      expect(body.references.drafts).toHaveLength(1);
+    });
+  });
+
   describe("when storage is not configured", () => {
     it("answers 404 on every media route", async () => {
       const app = buildTestApp({ mediaEnabled: false });
