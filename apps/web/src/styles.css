@@ -507,7 +507,13 @@ input[type="checkbox"] {
 }
 
 .sidebar-footer {
-  margin-top: auto;
+  /* Not margin-top: auto. That pins the footer to the sidebar's bottom edge,
+     which only reads as intentional when the collections list is long
+     enough to fill the space above it — with few collections it leaves a
+     large dead gap (and for a genuinely long list, .sidebar's own overflow
+     scroll pushes the footer past the fold anyway, so it wasn't reliably
+     keeping Sign out reachable either). Flowing right after the nav keeps
+     its position consistent regardless of collection count. */
   display: flex;
   align-items: center;
   gap: var(--space-2);
