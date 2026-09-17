@@ -60,61 +60,61 @@ Append inside that same `describe`, using those fixtures (this is verbatim —
 `add`, `media` and `db` all already exist):
 
 ```ts
-  describe("findReferences", () => {
-    function addDocument(): void {
-      createDocumentRepository(db).insert({
-        id: "d1",
-        collection: "blog",
-        path: "src/content/blog/hello.md",
-        format: "md",
-        slug: "hello",
-        source: "# Hi\n",
-        createdBy: null,
-        createdAt: 1000,
-        baseCommitSha: null,
-      });
-    }
-
-    it("reports the drafts and the git refs that use a file", () => {
-      add("m1");
-      addDocument();
-      media.setReferences("d1", ["m1"]);
-      media.setGitReferences("main", [
-        { mediaId: "m1", path: "src/content/blog/other.md" },
-      ]);
-
-      expect(media.findReferences("m1")).toEqual({
-        drafts: [
-          {
-            documentId: "d1",
-            collection: "blog",
-            path: "src/content/blog/hello.md",
-          },
-        ],
-        git: [{ ref: "main", path: "src/content/blog/other.md" }],
-      });
+describe("findReferences", () => {
+  function addDocument(): void {
+    createDocumentRepository(db).insert({
+      id: "d1",
+      collection: "blog",
+      path: "src/content/blog/hello.md",
+      format: "md",
+      slug: "hello",
+      source: "# Hi\n",
+      createdBy: null,
+      createdAt: 1000,
+      baseCommitSha: null,
     });
+  }
 
-    it("returns two empty lists for a file nothing uses", () => {
-      add("m1");
+  it("reports the drafts and the git refs that use a file", () => {
+    add("m1");
+    addDocument();
+    media.setReferences("d1", ["m1"]);
+    media.setGitReferences("main", [
+      { mediaId: "m1", path: "src/content/blog/other.md" },
+    ]);
 
-      expect(media.findReferences("m1")).toEqual({ drafts: [], git: [] });
-    });
-
-    it("returns two empty lists for a file that does not exist", () => {
-      expect(media.findReferences("nope")).toEqual({ drafts: [], git: [] });
-    });
-
-    it("forgets a draft reference once the document is deleted", () => {
-      add("m1");
-      addDocument();
-      media.setReferences("d1", ["m1"]);
-
-      db.prepare("DELETE FROM documents WHERE id = ?").run("d1");
-
-      expect(media.findReferences("m1").drafts).toEqual([]);
+    expect(media.findReferences("m1")).toEqual({
+      drafts: [
+        {
+          documentId: "d1",
+          collection: "blog",
+          path: "src/content/blog/hello.md",
+        },
+      ],
+      git: [{ ref: "main", path: "src/content/blog/other.md" }],
     });
   });
+
+  it("returns two empty lists for a file nothing uses", () => {
+    add("m1");
+
+    expect(media.findReferences("m1")).toEqual({ drafts: [], git: [] });
+  });
+
+  it("returns two empty lists for a file that does not exist", () => {
+    expect(media.findReferences("nope")).toEqual({ drafts: [], git: [] });
+  });
+
+  it("forgets a draft reference once the document is deleted", () => {
+    add("m1");
+    addDocument();
+    media.setReferences("d1", ["m1"]);
+
+    db.prepare("DELETE FROM documents WHERE id = ?").run("d1");
+
+    expect(media.findReferences("m1").drafts).toEqual([]);
+  });
+});
 ```
 
 - [ ] **Step 2: Run the test and watch it fail**
