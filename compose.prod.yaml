@@ -1,0 +1,107 @@
+# Production stack: each service runs its own built image (apps/*/Dockerfile)
+# instead of the dev containers' bind-mounted source. No insecure fallback
+# secrets here — every required value must come from .env, and compose
+# refuses to start if one is missing.
+#
+#   cp .env.example .env   # fill in every value this file references
+#   docker compose -f compose.prod.yaml up --build -d
+#
+# Put a TLS-terminating reverse proxy (Caddy, Traefik, nginx) in front of
+# this on a real deployment; nothing here terminates HTTPS itself.
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: "3000"
+      DATA_DIR: /data
+      NODE_ENV: production
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      CMS_PASSWORD: ${CMS_PASSWORD:?set CMS_PASSWORD in .env}
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:?set GITHUB_TOKEN in .env}
+      GITHUB_OWNER: ${GITHUB_OWNER:?set GITHUB_OWNER in .env}
+      GITHUB_REPOSITORY: ${GITHUB_REPOSITORY:?set GITHUB_REPOSITORY in .env}
+      GITHUB_BASE_BRANCH: ${GITHUB_BASE_BRANCH:-main}
+      HOCUSPOCUS_PUBLIC_URL: ${HOCUSPOCUS_PUBLIC_URL:-}
+      HOCUSPOCUS_INTERNAL_URL: ${HOCUSPOCUS_INTERNAL_URL:-}
+      HOCUSPOCUS_JWT_SECRET: ${HOCUSPOCUS_JWT_SECRET:-}
+      HOCUSPOCUS_WEBHOOK_SECRET: ${HOCUSPOCUS_WEBHOOK_SECRET:-}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_REGION: ${S3_REGION:-}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL:-}
+      MCP_TOKEN: ${MCP_TOKEN:-}
+      MEDIA_GC_INTERVAL_HOURS: ${MEDIA_GC_INTERVAL_HOURS:-6}
+      MEDIA_GC_GRACE_DAYS: ${MEDIA_GC_GRACE_DAYS:-7}
+    volumes:
+      - cms-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:3000/api/health').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      server:
+        condition: service_healthy
+
+  # Optional: only needed if HOCUSPOCUS_* is set above. Omit this service
+  # (and point HOCUSPOCUS_* at an external HocusPocus server) if you don't
+  # want live collaboration.
+  hocuspocus:
+    build:
+      context: .
+      dockerfile: apps/collab/Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: "1234"
+      CMS_WEBHOOK_URL: http://server:3000/api/collab/webhook
+      HOCUSPOCUS_JWT_SECRET: ${HOCUSPOCUS_JWT_SECRET:?set HOCUSPOCUS_JWT_SECRET in .env if you run this service}
+      HOCUSPOCUS_WEBHOOK_SECRET: ${HOCUSPOCUS_WEBHOOK_SECRET:?set HOCUSPOCUS_WEBHOOK_SECRET in .env if you run this service}
+    ports:
+      - "1234:1234"
+    depends_on:
+      server:
+        condition: service_healthy
+
+  # Optional: only needed if S3_ENDPOINT above points at this service. Omit
+  # it (and point S3_* at AWS S3 or Cloudflare R2 instead) if you'd rather
+  # not self-host media storage.
+  minio:
+    image: quay.io/minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:?set S3_ACCESS_KEY in .env if you run this service}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?set S3_SECRET_KEY in .env if you run this service}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  cms-data:
+  minio-data:

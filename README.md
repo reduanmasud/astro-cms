@@ -76,6 +76,26 @@ After changing dependencies, rebuild and refresh the containers' `node_modules`:
 docker compose up --build --renew-anon-volumes
 ```
 
+## Deploy to production with Docker
+
+`compose.yaml` above is dev-only (bind-mounted source, `node --watch`, a
+bundled MinIO with default credentials). `compose.prod.yaml` builds real
+images instead — `apps/server/Dockerfile`, `apps/collab/Dockerfile`, and
+`apps/web/Dockerfile` (a Vite build served by nginx, which also reverse-proxies
+`/api` to the server container).
+
+```sh
+cp .env.example .env   # fill in every value compose.prod.yaml references
+docker compose -f compose.prod.yaml up --build -d
+```
+
+It refuses to start if a required value is missing rather than falling back
+to an insecure default. The HocusPocus and MinIO services are optional —
+omit their env vars (and don't run them) to skip live collaboration or
+self-hosted media storage. `web` publishes port 80; put a TLS-terminating
+reverse proxy (Caddy, Traefik, nginx) in front of it for a real deployment,
+since nothing in this file terminates HTTPS itself.
+
 ## Develop on your machine
 
 ```sh
