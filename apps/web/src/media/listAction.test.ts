@@ -7,6 +7,16 @@ import { listAction, type ListRequest, type ListState } from "./listAction.ts";
  * *response* winning — not against a request built from stale
  * render-closure values (offset, filter) that changed before the click
  * that built it was processed (docs/superpowers/specs/2026-09-16-media-library-design.md).
+ *
+ * It also splits "unusable" into `"superseded"` and `"discard"` rather than
+ * collapsing both into one outcome. They carry different caller
+ * obligations: a superseded request can be silently ignored (the newer
+ * request that replaced it will clear any "loading" flag), but a discarded
+ * request is still the newest one in flight — nothing else is coming, so
+ * the caller must clear "loading" itself. Treating them the same produced a
+ * real regression: a request that outlives a delete (which shifts the
+ * count it was counting on) discarded silently and left the UI stuck on
+ * "Loading…" forever.
  */
 describe("listAction", () => {
   it("replaces when the newest request is for the first page", () => {
@@ -23,14 +33,16 @@ describe("listAction", () => {
     expect(listAction(request, state)).toBe("append");
   });
 
-  it("discards a request from a superseded sequence", () => {
+  it("supersedes a request from an older sequence", () => {
+    // A strictly newer request exists; that request owns clearing
+    // "loading" when it lands, so this one is silently ignorable.
     const request: ListRequest = { sequence: 2, offset: 0, unused: false };
     const state: ListState = { sequence: 3, count: 24, unused: false };
 
-    expect(listAction(request, state)).toBe("discard");
+    expect(listAction(request, state)).toBe("superseded");
   });
 
-  it("discards a request whose filter differs from the current filter", () => {
+  it("discards, rather than supersedes, a same-sequence request whose filter differs from the current filter", () => {
     // The cross-control race this module exists to close: unchecking
     // "Unused only" fires request N (offset 0, unused=false), then before
     // React re-renders (disabled={loading} hasn't applied yet) a click on
@@ -38,9 +50,23 @@ describe("listAction", () => {
     // and fires request N+1. N+1's sequence is newest and its offset (24)
     // happens to match the current count, so a guard that checks only
     // sequence and offset would append unused-only items onto the
-    // now-unfiltered list. The filter must be checked too.
+    // now-unfiltered list. The filter must be checked too. Because this is
+    // the newest sequence, the outcome must be "discard", not
+    // "superseded" — nothing else will clear "loading" for it.
     const request: ListRequest = { sequence: 5, offset: 24, unused: true };
     const state: ListState = { sequence: 5, count: 24, unused: false };
+
+    expect(listAction(request, state)).toBe("discard");
+  });
+
+  it("discards, rather than supersedes, a same-sequence request whose offset no longer matches the count", () => {
+    // The regression this split fixes: "Load more" is in flight (offset
+    // built from the pre-delete count) when a delete elsewhere shrinks the
+    // tracked count. No newer list request was made — this is still the
+    // newest sequence — so the outcome must be "discard", not
+    // "superseded", or nothing is left to clear "loading".
+    const request: ListRequest = { sequence: 4, offset: 24, unused: false };
+    const state: ListState = { sequence: 4, count: 23, unused: false };
 
     expect(listAction(request, state)).toBe("discard");
   });

@@ -34,8 +34,13 @@ export function MediaLibrary({ onClose }: MediaLibraryProps): JSX.Element {
   // applied yet) can fire from a stale closure — e.g. "Load more" clicked
   // just after unchecking "Unused only" — and send an offset/filter pair
   // that no longer describes what should be on screen. `listAction` decides
-  // which of "replace", "append", or "discard" applies; see its tests for
-  // the case that motivated it.
+  // which of "replace", "append", "discard", or "superseded" applies; see
+  // its tests for the cases that motivated it. "discard" and "superseded"
+  // both mean "don't apply this", but only "superseded" is safe to ignore
+  // outright — a superseded request has a newer one in flight that owns
+  // clearing `loading`, but a merely-discarded one is still the newest
+  // request there is, so this callback must clear `loading` itself or
+  // nothing ever will.
   const latestRequest = useRef(0);
   const applied = useRef<ListState>({ sequence: 0, count: 0, unused: false });
 
@@ -60,7 +65,11 @@ export function MediaLibrary({ onClose }: MediaLibraryProps): JSX.Element {
             unused: applied.current.unused,
           },
         );
-        if (action === "discard") return;
+        if (action === "superseded") return;
+        if (action === "discard") {
+          setLoading(false);
+          return;
+        }
 
         applied.current = {
           sequence,
@@ -85,7 +94,11 @@ export function MediaLibrary({ onClose }: MediaLibraryProps): JSX.Element {
             unused: applied.current.unused,
           },
         );
-        if (action === "discard") return;
+        if (action === "superseded") return;
+        if (action === "discard") {
+          setLoading(false);
+          return;
+        }
 
         setError(caught.message);
         setLoading(false);
