@@ -85,16 +85,31 @@ images instead — `apps/server/Dockerfile`, `apps/collab/Dockerfile`, and
 `/api` to the server container).
 
 ```sh
-cp .env.example .env   # fill in every value compose.prod.yaml references
+cp .env.example .env   # fill in CMS_PASSWORD, SESSION_SECRET, and GITHUB_*
 docker compose -f compose.prod.yaml up --build -d
 ```
 
-It refuses to start if a required value is missing rather than falling back
-to an insecure default. The HocusPocus and MinIO services are optional —
-omit their env vars (and don't run them) to skip live collaboration or
-self-hosted media storage. `web` publishes port 80; put a TLS-terminating
-reverse proxy (Caddy, Traefik, nginx) in front of it for a real deployment,
-since nothing in this file terminates HTTPS itself.
+By default this starts only `server` and `web` — the CMS_PASSWORD,
+SESSION_SECRET, and GitHub values are the only things it requires. It
+refuses to start if one of those is missing rather than falling back to an
+insecure default.
+
+HocusPocus (live collaboration) and MinIO (self-hosted media storage) are
+optional and sit behind Compose profiles, so `up` never touches them unless
+asked:
+
+```sh
+# bring in HocusPocus, MinIO, or both — fill their vars in .env first
+docker compose -f compose.prod.yaml --profile hocuspocus --profile minio up --build -d
+```
+
+You can also point `HOCUSPOCUS_*`/`S3_*` at your own HocusPocus server or
+S3/R2 bucket instead of the bundled services — either way, `server` only
+enables that feature once its env vars are non-empty.
+
+`web` publishes port 80; put a TLS-terminating reverse proxy (Caddy,
+Traefik, nginx) in front of it for a real deployment, since nothing in this
+file terminates HTTPS itself.
 
 ## Develop on your machine
 
