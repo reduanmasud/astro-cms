@@ -1,5 +1,6 @@
 import { Extension, type Editor, type Range } from "@tiptap/core";
 import Suggestion from "@tiptap/suggestion";
+import { uploadImages } from "./imageUpload.ts";
 
 export interface SlashCommandItem {
   readonly id: string;
@@ -93,6 +94,26 @@ export const SLASH_COMMANDS: readonly SlashCommandItem[] = [
     title: "Divider",
     hint: "---",
     run: (editor) => void editor.chain().focus().setHorizontalRule().run(),
+  },
+  {
+    id: "image",
+    title: "Image",
+    hint: "Upload a file",
+    run: (editor: Editor): void => {
+      // A one-off, unmanaged file input: the slash command list is a plain
+      // module-level array with no component state of its own to hold a
+      // ref, so the picker is created, used, and dropped right here.
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
+      input.addEventListener("change", () => {
+        const files = [...(input.files ?? [])];
+        if (files.length > 0) {
+          void uploadImages(editor.view, files, editor.state.selection.from);
+        }
+      });
+      input.click();
+    },
   },
 ];
 

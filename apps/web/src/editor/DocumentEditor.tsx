@@ -3,7 +3,7 @@ import {
   serializeDocument,
   type EditorDoc,
 } from "@astro-cms/markdown";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import { useCallback, useEffect, useRef, useState, type JSX } from "react";
 import {
   ApiError,
@@ -18,11 +18,13 @@ import {
   type DriftReport,
   type SchemaField,
 } from "../api.ts";
+import { ChevronLeftIcon, CloseIcon, CodeIcon, DetailsIcon } from "../Icons.tsx";
 import { editorExtensions, toEditorContent } from "./extensions.ts";
 import { useCollaboration, type CollabStatus } from "./useCollaboration.ts";
 import { SlashMenu } from "./SlashMenu.tsx";
 import type { SlashMenuState } from "./SlashCommand.ts";
-import { Toolbar } from "./Toolbar.tsx";
+import { SelectionToolbar } from "./SelectionToolbar.tsx";
+import { PublishReview } from "./PublishReview.tsx";
 import { useAutosave } from "./useAutosave.ts";
 import { FrontmatterFields } from "../frontmatter/FrontmatterFields.tsx";
 import {
@@ -68,10 +70,16 @@ interface Loaded {
   frontmatter: string | null;
 }
 
+/** The file's own name when the schema has no usable "title" field yet. */
+function fallbackTitle(path: string): string {
+  return path.split("/").pop() ?? path;
+}
+
 /**
- * Editing one draft: Tiptap for the body, schema-driven controls for
- * frontmatter with a raw YAML fallback when the schema is unavailable
- * (docs/adr/0007-frontmatter-schema-inference.md), and autosave to SQLite.
+ * Editing one draft, focus-canvas style: the frontmatter form lives behind
+ * "Details" until it's needed, formatting appears only on selection, and
+ * publishing opens a review step instead of firing immediately (docs: UX
+ * rethink, "Focus canvas" + "Publish as review" directions).
  */
 export function DocumentEditor({
   documentId,
@@ -87,6 +95,8 @@ export function DocumentEditor({
   const [conflict, setConflict] = useState<DriftReport | null>(null);
   const [schema, setSchema] = useState<readonly SchemaField[] | null>(null);
   const [rawReason, setRawReason] = useState<string>();
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
   // Gates the frontmatter section only — the body editor stays interactive
   // throughout. Until the collection request settles, `fmDoc` still holds
   // the frontmatter parsed from the *original* source, so the first control
@@ -150,6 +160,18 @@ export function DocumentEditor({
       cancelled = true;
     };
   }, [loaded]);
+
+  // Esc closes the Details panel, matching its own visible "Esc" hint.
+  useEffect(() => {
+    if (!detailsOpen) return;
+    function onKey(event: KeyboardEvent): void {
+      if (event.key === "Escape") setDetailsOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [detailsOpen]);
 
   const save = useCallback(async () => {
     const doc = currentDoc.current;
@@ -229,9 +251,11 @@ export function DocumentEditor({
       const result = await publishDocument(documentId);
       setConflict(null);
       setPublished(result.pullRequest.url);
+      setReviewOpen(false);
     } catch (caught) {
       if (caught instanceof ApiError && caught.code === "drift") {
         setConflict(await getDrift(documentId));
+        setReviewOpen(false);
       } else {
         setError(
           caught instanceof Error ? caught.message : "Publishing failed.",
@@ -290,7 +314,7 @@ export function DocumentEditor({
     return (
       <main className="content">
         <p role="alert">{error}</p>
-        <button type="button" onClick={onClose}>
+        <button type="button" className="btn btn-ghost" onClick={onClose}>
           Back
         </button>
       </main>
@@ -298,131 +322,285 @@ export function DocumentEditor({
   }
   if (!loaded || !editor) return <main className="content">Loading…</main>;
 
+  const title =
+    (fmDoc?.get("title") as string | undefined) ??
+    fallbackTitle(loaded.document.path);
+  const stats = wordStats(editor);
+
   return (
-    <main className="content editor-page">
-      <header className="editor-header">
-        <button type="button" onClick={onClose}>
-          ← Back
-        </button>
-        <div>
-          <strong>{loaded.document.path}</strong>
-          <span className="hint">
-            {loaded.document.collection} · {loaded.document.format} ·{" "}
-            {loaded.document.status}
+    <div className="editor-shell">
+      <header className="editor-topbar">
+        <div className="editor-topbar-left">
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Back to collection"
+            onClick={onClose}
+          >
+            <ChevronLeftIcon />
+          </button>
+          <span className="editor-breadcrumb">
+            {loaded.document.collection}
+            <span aria-hidden="true"> / </span>
+            <strong>{title}</strong>
           </span>
         </div>
-        <span className="spacer" />
-        <CollabIndicator status={collaboration.status} />
-        <SaveIndicator autosave={autosave} />
-        <button type="button" onClick={autosave.saveNow}>
-          Save now
-        </button>
-        <button
-          type="button"
-          onClick={() => void publish()}
-          disabled={publishing}
-        >
-          {publishing ? "Publishing…" : "Publish"}
-        </button>
+        <div className="editor-topbar-right">
+          <CollabIndicator status={collaboration.status} />
+          <SaveIndicator autosave={autosave} />
+          <UndoRedo editor={editor} />
+          <button
+            type="button"
+            className={detailsOpen ? "btn btn-secondary active" : "btn btn-secondary"}
+            aria-expanded={detailsOpen}
+            aria-controls="details-panel"
+            onClick={() => setDetailsOpen((open) => !open)}
+          >
+            <DetailsIcon />
+            Details
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => setReviewOpen(true)}
+          >
+            Publish…
+          </button>
+        </div>
       </header>
 
-      <details className="frontmatter" open>
-        <summary>Frontmatter</summary>
-        {!collectionSettled ? (
-          <p className="hint">Loading…</p>
-        ) : schema !== null && fmDoc !== undefined ? (
-          <>
-            <div className="frontmatter-mode">
-              <button type="button" onClick={toggleYamlMode}>
-                {yamlMode ? "Edit with controls" : "Edit as YAML"}
-              </button>
-              {yamlError !== undefined && (
-                <small className="hint" role="alert">
-                  {yamlError}
-                </small>
-              )}
-            </div>
-            {yamlMode ? (
-              <textarea
-                value={frontmatter}
-                spellCheck={false}
-                rows={Math.min(12, frontmatter.split("\n").length + 1)}
-                onChange={(event) => updateFrontmatter(event.target.value)}
-                aria-label="Frontmatter"
-              />
-            ) : (
-              <FrontmatterFields
-                schema={schema}
-                document={fmDoc}
-                onChange={() => {
-                  // `fmDoc.toString()` returns YAML text, which correctly ends in
-                  // a trailing newline. `frontmatterRef` instead holds frontmatter
-                  // the way `splitFrontmatter` (packages/markdown/src/parse.ts)
-                  // yields it, with that trailing newline already excluded, since
-                  // `serializeDocument` (packages/markdown/src/serialize.ts) adds
-                  // its own when writing the document back out. Strip exactly one
-                  // trailing newline to bridge the two contracts, not all
-                  // trailing whitespace: a blank line the user left inside their
-                  // frontmatter is theirs to keep.
-                  const raw = fmDoc.toString();
-                  const next = raw.endsWith("\n") ? raw.slice(0, -1) : raw;
-                  frontmatterRef.current =
-                    next === "" && loaded.frontmatter === null ? null : next;
-                  setFrontmatter(next);
-                  autosave.schedule();
-                }}
-              />
-            )}
-          </>
-        ) : (
-          <>
-            {rawReason !== undefined && (
-              <p className="hint">{rawReason} Editing it as YAML instead.</p>
-            )}
-            <textarea
-              value={frontmatter}
-              spellCheck={false}
-              rows={Math.min(12, frontmatter.split("\n").length + 1)}
-              onChange={(event) => updateFrontmatter(event.target.value)}
-              aria-label="Frontmatter"
-            />
-          </>
-        )}
-      </details>
+      {conflict !== null && (
+        <div role="alert" className="editor-conflict-bar">
+          <span>
+            <strong>This file changed in the repository.</strong> Re-sync to
+            load the latest before you publish.
+          </span>
+          <button
+            type="button"
+            className="btn btn-warning"
+            onClick={() => void resync()}
+          >
+            Re-sync
+          </button>
+        </div>
+      )}
 
       {published !== null && (
-        <p className="hint">
-          Published.{" "}
-          <a href={published} target="_blank" rel="noreferrer">
-            Open the pull request
-          </a>
-        </p>
-      )}
-      {conflict !== null && (
-        <section className="conflict" role="alert">
-          <h2>The base branch moved</h2>
-          <p>
-            The repository changed since this draft started, so publishing
-            stopped. Nothing was written to GitHub. Here is the file as it
-            stands on the base branch:
-          </p>
-          <pre>
-            {conflict.baseContent ?? "(the file is not on the base branch)"}
-          </pre>
-          <button type="button" onClick={() => void resync()}>
-            Re-sync and keep my draft
-          </button>
-        </section>
+        <div className="editor-conflict-bar editor-published-bar">
+          <span>
+            Published.{" "}
+            <a href={published} target="_blank" rel="noreferrer">
+              Open the pull request
+            </a>
+          </span>
+        </div>
       )}
 
-      <Toolbar editor={editor} />
-      <EditorContent editor={editor} className="editor" />
-      <SlashMenu state={menu} />
-      <p className="hint">
-        Type <code>/</code> for blocks. Markdown shortcuts such as{" "}
-        <code># </code>, <code>- </code> and <code>```</code> work while typing.
-      </p>
-    </main>
+      <div className="editor-body">
+        <main className="editor-main">
+          <article className="editor-article">
+            <div className="editor-title-block">
+              <h1>{title}</h1>
+              <div className="editor-meta">
+                <span className="editor-meta-status">
+                  <span
+                    className={
+                      loaded.document.status === "published"
+                        ? "dot dot-published"
+                        : "dot dot-draft"
+                    }
+                    aria-hidden="true"
+                  />
+                  {loaded.document.status === "published" ? "Published" : "Draft"}
+                </span>
+                <span className="hint">
+                  {stats.words} word{stats.words === 1 ? "" : "s"} ·{" "}
+                  {stats.minutes} min read
+                </span>
+                <button
+                  type="button"
+                  className="text-link"
+                  aria-expanded={detailsOpen}
+                  aria-controls="details-panel"
+                  onClick={() => setDetailsOpen((open) => !open)}
+                >
+                  {detailsOpen ? "Hide details" : "Edit details"}
+                </button>
+              </div>
+            </div>
+
+            <div className="editor-canvas-wrap">
+              <SelectionToolbar editor={editor} />
+              <EditorContent editor={editor} className="editor" />
+              <SlashMenu state={menu} />
+            </div>
+            <p className="hint">
+              Type <code>/</code> for a heading, image, list or quote.
+            </p>
+          </article>
+        </main>
+
+        {detailsOpen && (
+          <aside
+            id="details-panel"
+            aria-labelledby="details-title"
+            className="details-panel"
+          >
+            <div className="details-header">
+              <h2 id="details-title">Details</h2>
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label="Close details"
+                onClick={() => setDetailsOpen(false)}
+              >
+                <CloseIcon />
+              </button>
+            </div>
+
+            <div className="details-body">
+              {!collectionSettled ? (
+                <p className="hint">Loading…</p>
+              ) : schema !== null && fmDoc !== undefined ? (
+                yamlMode ? (
+                  <textarea
+                    value={frontmatter}
+                    spellCheck={false}
+                    rows={Math.min(16, frontmatter.split("\n").length + 1)}
+                    onChange={(event) => updateFrontmatter(event.target.value)}
+                    aria-label="Frontmatter"
+                  />
+                ) : (
+                  <FrontmatterFields
+                    schema={schema}
+                    document={fmDoc}
+                    onChange={() => {
+                      // `fmDoc.toString()` returns YAML text, which correctly ends in
+                      // a trailing newline. `frontmatterRef` instead holds frontmatter
+                      // the way `splitFrontmatter` (packages/markdown/src/parse.ts)
+                      // yields it, with that trailing newline already excluded, since
+                      // `serializeDocument` (packages/markdown/src/serialize.ts) adds
+                      // its own when writing the document back out. Strip exactly one
+                      // trailing newline to bridge the two contracts, not all
+                      // trailing whitespace: a blank line the user left inside their
+                      // frontmatter is theirs to keep.
+                      const raw = fmDoc.toString();
+                      const next = raw.endsWith("\n") ? raw.slice(0, -1) : raw;
+                      frontmatterRef.current =
+                        next === "" && loaded.frontmatter === null ? null : next;
+                      setFrontmatter(next);
+                      autosave.schedule();
+                    }}
+                  />
+                )
+              ) : (
+                <>
+                  {rawReason !== undefined && (
+                    <p className="hint">{rawReason} Editing it as YAML instead.</p>
+                  )}
+                  <textarea
+                    value={frontmatter}
+                    spellCheck={false}
+                    rows={Math.min(16, frontmatter.split("\n").length + 1)}
+                    onChange={(event) => updateFrontmatter(event.target.value)}
+                    aria-label="Frontmatter"
+                  />
+                </>
+              )}
+            </div>
+
+            <div className="details-footer">
+              <span className="hint">Saves with the entry</span>
+              {collectionSettled && schema !== null && fmDoc !== undefined ? (
+                <>
+                  {yamlError !== undefined && (
+                    <small className="hint" role="alert">
+                      {yamlError}
+                    </small>
+                  )}
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    onClick={toggleYamlMode}
+                  >
+                    <CodeIcon />
+                    {yamlMode ? "Edit with controls" : "Edit raw YAML"}
+                  </button>
+                </>
+              ) : (
+                collectionSettled && (
+                  // No inferred schema (or unparsable frontmatter) means
+                  // there is no "controls" mode to switch to — already
+                  // editing raw YAML above, so say that plainly instead of
+                  // just leaving the toggle silently absent.
+                  <small className="hint">Editing as raw YAML — no form to switch to</small>
+                )
+              )}
+            </div>
+          </aside>
+        )}
+      </div>
+
+      <footer className="editor-statusbar">
+        <span className="mono">{loaded.document.path}</span>
+      </footer>
+
+      {reviewOpen && (
+        <PublishReview
+          document={loaded.document}
+          editor={editor}
+          schema={schema}
+          fmDoc={fmDoc}
+          title={title}
+          publishing={publishing}
+          onClose={() => setReviewOpen(false)}
+          onPublish={publish}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Undo/redo apply to the whole document, not a selection, so — unlike Bold
+ * or Link — they don't belong on the floating selection toolbar; they live
+ * here instead, always reachable.
+ */
+function UndoRedo({
+  editor,
+}: {
+  editor: NonNullable<ReturnType<typeof useEditor>>;
+}): JSX.Element {
+  const state = useEditorState({
+    editor,
+    selector: ({ editor: instance }) =>
+      instance.isDestroyed
+        ? { canUndo: false, canRedo: false }
+        : { canUndo: instance.can().undo(), canRedo: instance.can().redo() },
+  });
+  return (
+    <>
+      <button
+        type="button"
+        className="icon-btn"
+        aria-label="Undo"
+        title="Undo (⌘Z)"
+        disabled={!state.canUndo}
+        onClick={() => editor.chain().focus().undo().run()}
+      >
+        ↶
+      </button>
+      <button
+        type="button"
+        className="icon-btn"
+        aria-label="Redo"
+        title="Redo (⇧⌘Z)"
+        disabled={!state.canRedo}
+        onClick={() => editor.chain().focus().redo().run()}
+      >
+        ↷
+      </button>
+    </>
   );
 }
 
@@ -448,6 +626,25 @@ function SaveIndicator({
       {text}
     </span>
   );
+}
+
+interface WordCountStats {
+  words: number;
+  minutes: number;
+}
+
+/**
+ * Computed inline, on every render, rather than cached in state: an
+ * autosave-triggered re-render happens on every keystroke anyway (`schedule`
+ * always calls `setState`), so a fresh read here is never stale — no
+ * subscription or effect needed, and no risk of showing a count from before
+ * the editor's initial content had loaded.
+ */
+function wordStats(editor: NonNullable<ReturnType<typeof useEditor>>): WordCountStats {
+  if (editor.isDestroyed) return { words: 0, minutes: 1 };
+  const text = editor.getText().trim();
+  const words = text === "" ? 0 : text.split(/\s+/).length;
+  return { words, minutes: Math.max(1, Math.round(words / 200)) };
 }
 
 const EMPTY_DOC: EditorDoc = { type: "doc", content: [] };

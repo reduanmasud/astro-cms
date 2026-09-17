@@ -35,7 +35,7 @@ export function Control({
         value={String(value)}
         onChange={(event) => onChange(event.target.value)}
       >
-        <option value="">—</option>
+        <option value="">–</option>
         {(values ?? []).map((option) => (
           <option key={String(option)} value={String(option)}>
             {String(option)}

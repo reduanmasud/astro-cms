@@ -116,7 +116,7 @@ export function MediaLibrary({ onClose }: MediaLibraryProps): JSX.Element {
   return (
     <main className="content media-library">
       <header className="editor-header">
-        <button type="button" onClick={onClose}>
+        <button type="button" className="btn btn-ghost" onClick={onClose}>
           ← Back
         </button>
         <strong>Media</strong>
@@ -146,6 +146,7 @@ export function MediaLibrary({ onClose }: MediaLibraryProps): JSX.Element {
           {error}{" "}
           <button
             type="button"
+            className="btn btn-secondary"
             onClick={() => {
               setLoading(true);
               setError(undefined);
@@ -207,6 +208,7 @@ export function MediaLibrary({ onClose }: MediaLibraryProps): JSX.Element {
       {!done && items.length > 0 && (
         <button
           type="button"
+          className="btn btn-secondary"
           onClick={() => {
             setLoading(true);
             setError(undefined);

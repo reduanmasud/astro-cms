@@ -10,9 +10,9 @@ A small, self-hosted CMS for **one Astro project in one GitHub repository**.
 - MCP is a first-class interface to the same services as the web UI.
 - Auth is one shared password plus a display name. No accounts, teams, or OAuth.
 
-> **Status: early.** Login, GitHub repository access, Astro collection
-> discovery, SQLite drafts, a Tiptap editor, and live collaboration exist.
-> Publishing to GitHub, media, and MCP are not built yet.
+> **Status:** Login, GitHub repository access, Astro collection discovery,
+> SQLite drafts, a Tiptap editor, live collaboration, publishing to GitHub,
+> the media library, and MCP all exist.
 
 ## Documentation
 

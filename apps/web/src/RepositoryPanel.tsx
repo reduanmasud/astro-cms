@@ -9,8 +9,12 @@ type State =
   | { status: "error"; message: string }
   | { status: "loaded"; report: RepositoryStatus };
 
+export interface RepositoryPanelProps {
+  onClose: () => void;
+}
+
 /** Shows whether GitHub is connected and the token has what the CMS needs. */
-export function RepositoryPanel(): JSX.Element {
+export function RepositoryPanel({ onClose }: RepositoryPanelProps): JSX.Element {
   const [state, setState] = useState<State>({ status: "loading" });
 
   // Bumping this re-runs the effect, which fetches the status again.
@@ -30,21 +34,30 @@ export function RepositoryPanel(): JSX.Element {
   };
 
   return (
-    <section className="card" aria-labelledby="repository-heading">
-      <header className="card-header">
-        <h2 id="repository-heading">GitHub repository</h2>
+    <main className="content">
+      <header className="editor-header">
+        <button type="button" className="btn btn-ghost" onClick={onClose}>
+          ← Back
+        </button>
+        <strong>GitHub repository</strong>
+        <span className="spacer" />
         <button
           type="button"
+          className="btn btn-secondary"
           onClick={load}
           disabled={state.status === "loading"}
         >
           {state.status === "loading" ? "Checking…" : "Check again"}
         </button>
       </header>
-      {state.status === "loading" && <p className="hint">Checking GitHub…</p>}
-      {state.status === "error" && <p role="alert">{state.message}</p>}
-      {state.status === "loaded" && <Report report={state.report} />}
-    </section>
+      <section className="card" aria-label="Repository status">
+        {state.status === "loading" && (
+          <p className="hint">Checking GitHub…</p>
+        )}
+        {state.status === "error" && <p role="alert">{state.message}</p>}
+        {state.status === "loaded" && <Report report={state.report} />}
+      </section>
+    </main>
   );
 }
 
@@ -125,7 +138,7 @@ function Stat({ label, value, mono = false }: StatProps): JSX.Element {
   return (
     <div>
       <dt>{label}</dt>
-      <dd className={mono ? "mono" : undefined}>{value ?? "—"}</dd>
+      <dd className={mono ? "mono" : undefined}>{value ?? "–"}</dd>
     </div>
   );
 }

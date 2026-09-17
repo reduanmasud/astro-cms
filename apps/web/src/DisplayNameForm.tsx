@@ -63,7 +63,7 @@ export function DisplayNameForm({
           />
         </label>
         {error && <p role="alert">{error}</p>}
-        <button type="submit" disabled={submitting}>
+        <button type="submit" className="btn btn-primary" disabled={submitting}>
           {submitting ? "Saving…" : "Continue"}
         </button>
       </form>

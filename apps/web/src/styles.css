@@ -1,157 +1,172 @@
+/* ==========================================================================
+   Design tokens
+   Light values are the default; dark values apply under [data-theme="dark"],
+   set by ThemeToggle. No `prefers-color-scheme` fallback is needed because
+   ThemeToggle always sets data-theme on load (from storage, else the OS
+   preference), so the token layer only ever has to know about one switch.
+   ========================================================================== */
+
 :root {
-  color-scheme: light dark;
-  font-family: system-ui, sans-serif;
-  line-height: 1.5;
+  color-scheme: light;
+
+  /* Two type families by design, not by AI-default habit (see DESIGN.md):
+     Plex Sans runs the interface chrome so it stays quiet and functional;
+     Plex Serif runs inside the editor canvas so writing reads like writing,
+     not like filling out a form. Same type family, so the pairing is
+     deliberate rather than a random mix. */
+  --font-ui: "IBM Plex Sans", system-ui, sans-serif;
+  --font-content: "IBM Plex Serif", Georgia, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-8: 3rem;
+
+  /* Radius is a hierarchy tool, not a uniform pill: small controls get the
+     tightest radius, containers get progressively more. */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.875rem;
+
+  /* 44px: the minimum comfortable tap target for any button-family control. */
+  --tap-min: 2.75rem;
+
+  --color-bg: #faf9f7;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f1efea;
+  --color-border: #e4e1da;
+  /* #cbc5b9 measured 1.72:1 against surface — below the 3:1 WCAG 1.4.11
+     needs for a UI-component boundary (input/button edges). Darkened to
+     clear it with margin (3.29:1). */
+  --color-border-strong: #988c7c;
+  --color-text: #211e1a;
+  --color-text-muted: #635d53;
+
+  /* Terracotta accent: the one deliberate accent color (R-29), chosen to
+     read as "editorial ink" rather than the default AI blue-purple, and
+     used only for actions and focus, never as decoration. */
+  --color-accent: #a8532e;
+  --color-accent-hover: #8f4726;
+  --color-accent-soft: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+  --color-accent-contrast: #ffffff;
+
+  --color-success: #2b6e2f;
+  --color-danger: #b3261e;
+  --color-warning: #92400e;
+
+  --shadow-elevated: 0 8px 24px rgb(30 24 16 / 0.14);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-bg: #17140f;
+  --color-surface: #201c17;
+  --color-surface-subtle: #2a241d;
+  --color-border: #3a332a;
+  /* #4f4638 measured 1.83:1 against surface — below the 3:1 WCAG 1.4.11
+     needs for a UI-component boundary. Lightened to clear it (3.41:1). */
+  --color-border-strong: #7b6e5b;
+  --color-text: #f3efe9;
+  --color-text-muted: #b4ac9f;
+
+  --color-accent: #e08659;
+  --color-accent-hover: #ec9970;
+  --color-accent-soft: color-mix(in srgb, var(--color-accent) 16%, var(--color-surface));
+  --color-accent-contrast: #241207;
+
+  --color-success: #66bb6a;
+  /* #ef5350 measured 4.40:1 against surface-subtle — just under the 4.5:1
+     text minimum. Lightened to clear it (4.80:1). */
+  --color-danger: #f65c51;
+  --color-warning: #f4a64b;
+
+  --shadow-elevated: 0 8px 24px rgb(0 0 0 / 0.4);
+}
+
+/* ==========================================================================
+   Reset & base
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-ui);
+  line-height: 1.55;
 }
 
 body {
   margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-ui);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
 }
 
 button {
-  font: inherit;
   cursor: pointer;
 }
 
-.centered {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding-inline: 1rem;
+button:disabled {
+  cursor: default;
 }
 
-.panel {
-  display: grid;
-  gap: 0.75rem;
-  width: min(100%, 20rem);
+a {
+  color: var(--color-accent);
 }
 
-.panel h1 {
-  margin: 0 0 0.5rem;
-  font-size: 1.5rem;
-}
-
-.panel label {
-  display: grid;
-  gap: 0.25rem;
-}
-
-.panel input {
-  font: inherit;
-  padding: 0.5rem;
+/* Every interactive element gets a visible, consistent focus ring instead of
+   the browser default or `outline: none` (R-32). */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 [role="alert"] {
-  color: #c62828;
+  color: var(--color-danger);
   margin: 0;
-}
-
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent);
-}
-
-.spacer {
-  flex: 1;
-}
-
-.content {
-  padding: 1rem;
 }
 
 .hint {
   margin: 0;
-  opacity: 0.75;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
 }
 
-.content {
-  display: grid;
-  gap: 1rem;
-  max-width: 48rem;
-}
-
-.card {
-  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
-  border-radius: 0.5rem;
-  padding: 1rem;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.card-header h2 {
-  margin: 0;
-  font-size: 1.125rem;
-}
-
-.repo-line {
-  margin: 0.75rem 0 0.25rem;
-  overflow-wrap: anywhere;
-}
-
-.summary {
-  margin: 0 0 1rem;
-  font-weight: 600;
-}
-
-.summary.ok,
-.checks .ok .mark {
-  color: #2e7d32;
-}
-
-.summary.fail,
-.checks .fail .mark {
-  color: #c62828;
-}
-
-.stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-  gap: 0.75rem;
-  margin: 0 0 1rem;
-}
-
-.stats dt {
-  font-size: 0.8125rem;
-  opacity: 0.75;
-}
-
-.stats dd {
-  margin: 0;
-  font-weight: 600;
-}
-
-.mono,
-code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-
-.checks {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 1rem;
-  display: grid;
-  gap: 0.5rem;
-}
-
-.checks li {
-  display: flex;
-  gap: 0.5rem;
-  align-items: flex-start;
-}
-
-.mark {
-  font-weight: 700;
-  width: 1rem;
+/* Inline stroke icons: sized and weighted to sit quietly next to text,
+   never as standalone decoration (see Icons.tsx). */
+.ic {
+  width: 1.125rem;
+  height: 1.125rem;
   flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .sr-only {
@@ -163,110 +178,956 @@ code {
   white-space: nowrap;
 }
 
+.mono,
+code {
+  font-family: var(--font-mono);
+}
+
+/* ==========================================================================
+   Buttons & inputs
+
+   Every command button in the app carries an explicit role — what a button
+   IS, not what container it happens to sit in — so the same class always
+   means the same weight, on any screen:
+
+   .btn-primary   the one affirmative action per screen (Sign in, Publish)
+   .btn-secondary default weight: everyday utility actions (Save now, Retry)
+   .btn-ghost     low-emphasis exits/back nav, never competes with content
+   .btn-danger    irreversible actions (Delete) — outlined, not filled, so
+                  it reads as "caution" rather than "the button to press"
+   .btn-warning   a corrective action inside a warning/conflict context
+   ========================================================================== */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--tap-min);
+  padding: 0.5rem 0.9rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-weight: 500;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+}
+
+.btn-primary {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}
+
+.btn-secondary {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--color-surface-subtle);
+}
+
+.btn-ghost {
+  border-color: transparent;
+  background: none;
+  color: var(--color-text-muted);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--color-surface-subtle);
+  color: var(--color-text);
+}
+
+.btn-danger {
+  border-color: var(--color-danger);
+  background: none;
+  color: var(--color-danger);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-danger) 10%, var(--color-surface));
+}
+
+.btn-warning {
+  border-color: var(--color-warning);
+  background: none;
+  color: var(--color-warning);
+}
+
+.btn-warning:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface));
+}
+
+input,
+select,
+textarea {
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text);
+  min-height: 2.25rem;
+}
+
+input[type="checkbox"] {
+  min-height: 0;
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--color-accent);
+}
+
+/* ==========================================================================
+   Auth screens (Login / display name)
+   ========================================================================== */
+
+.centered {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  position: relative;
+}
+
+.panel {
+  display: grid;
+  gap: var(--space-3);
+  width: min(100%, 22rem);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-elevated);
+}
+
+.panel h1 {
+  margin: 0 0 var(--space-1);
+  font-size: 1.5rem;
+}
+
+.panel label {
+  display: grid;
+  gap: var(--space-1);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   Theme toggle
+   ========================================================================== */
+
+.theme-toggle {
+  min-height: var(--tap-min);
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.theme-toggle:hover {
+  border-color: var(--color-accent);
+}
+
+.theme-toggle-floating {
+  position: fixed;
+  top: var(--space-4);
+  right: var(--space-4);
+}
+
+/* ==========================================================================
+   Shell & layout
+   ========================================================================== */
+
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 16.5rem minmax(0, 1fr);
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* ==========================================================================
+   Sidebar navigator
+   Persistent across every signed-in screen: collections, Media, and
+   Repository status are always one click away instead of buried in
+   per-screen chrome (docs: UX rethink, "Navigator" direction).
+   ========================================================================== */
+
+.sidebar {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-3);
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-family: var(--font-ui);
+  overflow-y: auto;
+}
+
+.sidebar-brand {
+  padding: var(--space-2) var(--space-2);
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+}
+
+.search-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-field .ic {
+  position: absolute;
+  left: 0.75rem;
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.search-field input {
+  width: 100%;
+  padding-left: 2.375rem;
+}
+
+.sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.sidebar-heading {
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.sidebar-section .hint {
+  padding: 0 var(--space-2);
+}
+
+.nav-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap-min);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  border: none;
+  background: none;
+  color: var(--color-text);
+  font-weight: 400;
+  text-align: left;
+}
+
+.nav-row:hover {
+  background: var(--color-surface-subtle);
+}
+
+.nav-row[aria-current="true"] {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+.nav-row-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-row-count {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.nav-row-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--color-text-muted);
+}
+
+.nav-row-dot--ok {
+  background: var(--color-success);
+}
+
+.nav-row-dot--warn {
+  background: var(--color-danger);
+}
+
+.sidebar-divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: var(--space-1) var(--space-2);
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.sidebar-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+/* ==========================================================================
+   Collection entries (main pane)
+   ========================================================================== */
+
+.collection-header {
+  display: flex;
+  /* Centered, not top or bottom: the title block is two lines (name +
+     path), the button is one. Either edge-alignment leaves the button
+     hugging one side with a visible gap of dead space on the other; center
+     is the only option that balances against the whole block. */
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.collection-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.collection-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.collection-toolbar input[type="search"] {
+  width: 20rem;
+  max-width: 100%;
+}
+
+.chip-group {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.chip:hover {
+  background: var(--color-surface-subtle);
+  color: var(--color-text);
+}
+
+.chip[aria-pressed="true"] {
+  background: var(--color-accent-soft);
+  border-color: transparent;
+  color: var(--color-accent);
+}
+
+.entry-table {
+  /* Matches the row grid's own capped content width (28+10+10+1.125rem of
+     columns, 3rem of gaps, 2rem of row padding) — otherwise a bordered box
+     this wide, with its rows clustered left inside it, would show its own
+     empty strip down the right side instead of hugging its content. */
+  max-width: 56rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.entry-row {
+  display: grid;
+  /* A capped entry-name column, not `1fr`: an `fr` track always claims all
+     leftover width regardless of any max-width on the table around it, so
+     on a wide screen a short filename still ends up with a huge dead gap
+     before Status/Last edited. Capping it plus `justify-content: start`
+     keeps the columns clustered together, with any leftover row width
+     collecting once at the end instead of stretched between columns. */
+  grid-template-columns: minmax(0, 28rem) 10rem 10rem 1.125rem;
+  justify-content: start;
+  gap: var(--space-4);
+  align-items: center;
+  width: 100%;
+  min-height: 3.5rem;
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  border-top: 1px solid var(--color-border);
+  background: none;
+  color: var(--color-text);
+  text-align: left;
+  font-weight: 400;
+}
+
+.entry-row .ic {
+  color: var(--color-text-muted);
+}
+
+.entry-row:first-child {
+  border-top: none;
+}
+
+.entry-row:hover {
+  background: var(--color-surface-subtle);
+}
+
+.entry-row-head {
+  min-height: 2.5rem;
+  background: var(--color-surface-subtle);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.entry-row-head:hover {
+  background: var(--color-surface-subtle);
+}
+
+.entry-name {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.entry-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dot-draft {
+  background: var(--color-text-muted);
+}
+
+.dot-published {
+  background: var(--color-success);
+}
+
+.entry-empty {
+  padding: var(--space-4);
+}
+
+.content {
+  display: grid;
+  /* Without this, a CSS grid's default align-content is `stretch`: when this
+     box ends up taller than its rows' natural content (it's a child of a
+     min-height:100vh shell, so on a short page — few entries, little
+     content — it always is), that leftover height gets distributed as gaps
+     between the header/toolbar/table rows instead of collecting once, after
+     them, where it belongs. */
+  align-content: start;
+  gap: var(--space-4);
+  max-width: 48rem;
+  padding: var(--space-5) var(--space-4);
+  margin: 0 auto;
+}
+
+/* The entry table is a data view, not prose: let it use the main pane's
+   full width instead of the narrow centered column the auth/editor/media
+   screens use, so "Create draft" reads as a header action, not a floating,
+   centered afterthought. */
+.collection-entries {
+  /* Wider than the prose-width screens (editor, auth) since this is a data
+     table, but still bounded: on a genuinely wide monitor, `max-width: none`
+     stretched the entry column and the header's space-between apart into
+     awkward, disconnected-looking gaps instead of just filling more room. */
+  max-width: 75rem;
+  margin: 0 auto;
+}
+
+.card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--color-surface);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.card-header h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.repo-line {
+  margin: var(--space-3) 0 var(--space-1);
+  overflow-wrap: anywhere;
+}
+
+.summary {
+  margin: 0 0 var(--space-4);
+  font-weight: 600;
+}
+
+.summary.ok,
+.checks .ok .mark {
+  color: var(--color-success);
+}
+
+.summary.fail,
+.checks .fail .mark {
+  color: var(--color-danger);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+}
+
+.stats dt {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.stats dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.checks {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--space-4);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.checks li {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+
+.mark {
+  font-weight: 700;
+  width: 1rem;
+  flex-shrink: 0;
+}
+
 /* --- lists of collections and entries --- */
 
 .list {
   list-style: none;
-  margin: 0.75rem 0;
+  margin: var(--space-3) 0;
   padding: 0;
   display: grid;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 
 .list button {
   display: grid;
   gap: 0.15rem;
   width: 100%;
+  min-height: auto;
   text-align: left;
-  padding: 0.5rem;
+  padding: var(--space-2);
   background: none;
   border: 1px solid transparent;
-  border-radius: 0.375rem;
+  border-radius: var(--radius-sm);
   color: inherit;
+  font-weight: 400;
 }
 
 .list button:hover {
-  border-color: color-mix(in srgb, currentColor 25%, transparent);
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-subtle);
 }
 
-.new-entry {
-  display: flex;
-  gap: 0.5rem;
-  align-items: end;
-  flex-wrap: wrap;
-}
-
-.new-entry label {
-  display: grid;
-  gap: 0.25rem;
-  flex: 1;
-  min-width: 16rem;
-}
-
-.new-entry input {
-  font: inherit;
-  padding: 0.4rem;
-}
-
-/* --- editor --- */
-
-.editor-page {
-  max-width: 52rem;
-}
-
-.editor-header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  margin-bottom: 0.75rem;
-}
-
-.editor-header .hint {
-  display: block;
-}
+/* ==========================================================================
+   Editor
+   ========================================================================== */
 
 .save-status {
   font-size: 0.875rem;
-  opacity: 0.8;
+  color: var(--color-text-muted);
 }
 
 .save-status.fail {
-  color: #c62828;
-  opacity: 1;
+  color: var(--color-danger);
 }
 
-.frontmatter {
-  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
-  border-radius: 0.375rem;
-  padding: 0.5rem 0.75rem;
-  margin-bottom: 0.75rem;
+/* ==========================================================================
+   Editor shell — "Focus canvas": a slim topbar, formatting only on
+   selection, and the frontmatter form behind Details until it's needed
+   (docs: UX rethink, "Focus canvas" direction).
+   ========================================================================== */
+
+.editor-shell {
+  /* A fixed height, not a floor: the Details panel is a sibling of the
+     article in this flex column, so if the shell were only min-height it
+     would grow to match a long article's full content height, dragging the
+     panel's own footer (and its YAML toggle) far down the page instead of
+     staying pinned to the viewport with its own internal scroll. */
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
-.frontmatter textarea {
-  width: 100%;
-  margin-top: 0.5rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+.editor-topbar {
+  flex-shrink: 0;
+  min-height: 3.5rem;
+  box-sizing: border-box;
+  padding: var(--space-2) var(--space-3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.editor-topbar-left,
+.editor-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.editor-breadcrumb {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-muted);
   font-size: 0.875rem;
-  padding: 0.5rem;
+}
+
+.editor-breadcrumb strong {
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.icon-btn {
+  box-sizing: border-box;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-muted);
+}
+
+.icon-btn:hover {
+  color: var(--color-text);
+  background: var(--color-surface-subtle);
+}
+
+.btn-secondary.active {
+  background: var(--color-accent-soft);
+  border-color: transparent;
+  color: var(--color-accent);
+}
+
+.text-link {
+  border: none;
+  background: none;
+  padding: 0;
+  min-height: var(--tap-min);
+  color: var(--color-accent);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.text-link:hover {
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+}
+
+.editor-conflict-bar {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  min-height: 3.5rem;
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  border-bottom: 1px solid var(--color-warning);
+  background: color-mix(in srgb, var(--color-warning) 8%, var(--color-surface));
+  font-size: 0.875rem;
+}
+
+.editor-conflict-bar strong {
+  color: var(--color-warning);
+  font-weight: 600;
+}
+
+.editor-published-bar {
+  border-bottom-color: var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 8%, var(--color-surface));
+}
+
+.editor-body {
+  flex-grow: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.editor-main {
+  flex-grow: 1;
+  display: flex;
+  justify-content: center;
+  padding: var(--space-6) var(--space-4);
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.editor-article {
+  width: 100%;
+  max-width: 47.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.editor-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.editor-title-block h1 {
+  margin: 0;
+  font-family: var(--font-content);
+  font-size: 2.75rem;
+  line-height: 1.15;
+  font-weight: 600;
+}
+
+.editor-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.editor-meta-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.editor-canvas-wrap {
+  position: relative;
+}
+
+.editor-statusbar {
+  flex-shrink: 0;
+  min-height: 2.5rem;
+  box-sizing: border-box;
+  padding: 0 var(--space-4);
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+/* --- selection toolbar: formatting appears only on selection --- */
+
+.selection-toolbar {
+  position: fixed;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  padding: var(--space-1);
+  transform: translate(-50%, calc(-100% - 0.75rem));
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-elevated);
+}
+
+/* Deliberately smaller than the 44px tap-target minimum elsewhere: this is
+   a secondary, contextual popup a person is already mid-selection to reach,
+   not a primary always-visible control — at 44px square each it read as
+   oversized and heavy for what is meant to be a quiet, momentary toolbar. */
+.selection-toolbar button {
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0.25rem 0.4rem;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.selection-toolbar .ic {
+  width: 1rem;
+  height: 1rem;
+}
+
+.selection-toolbar button:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-subtle);
+}
+
+.selection-toolbar button.active {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.toolbar-separator {
+  width: 1px;
+  align-self: stretch;
+  margin: var(--space-1) var(--space-1);
+  background: var(--color-border);
+}
+
+/* --- Details panel: the frontmatter form, hidden until asked for --- */
+
+.details-panel {
+  flex-shrink: 0;
+  width: 26.25rem;
+  max-width: 90vw;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-left: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.details-header {
+  flex-shrink: 0;
+  min-height: 4rem;
+  box-sizing: border-box;
+  padding: 0 var(--space-3) 0 var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.details-header h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.details-body {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: var(--space-4);
+}
+
+.details-body textarea {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  padding: var(--space-2);
+}
+
+.details-footer {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-top: 1px solid var(--color-border);
+}
+
+.details-footer > .hint:first-child {
+  flex: 1;
 }
 
 .frontmatter-fields {
+  /* Single column: the Details panel is 420px wide, too narrow for two
+     columns of real inputs (a date picker alone wants ~160px) without
+     everything overflowing or wrapping badly. */
   display: grid;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
 }
 
 .frontmatter-fields label {
   display: grid;
-  gap: 0.25rem;
+  gap: var(--space-1);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* A checkbox reads as its own full-width row (see "Draft" in the mockup),
+   and so does a raw-YAML fallback — a textarea squeezed to half width would
+   be unreadable. */
+.frontmatter-fields label:has(input[type="checkbox"]),
+.frontmatter-fields label:has(textarea) {
+  grid-column: 1 / -1;
 }
 
 .frontmatter-fields label:has(input[type="checkbox"]) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 /* The required/bad-YAML hint is a flex sibling of the checkbox row, not a
@@ -277,69 +1138,43 @@ code {
   flex-basis: 100%;
 }
 
-.frontmatter-fields input,
-.frontmatter-fields select {
-  font: inherit;
-  padding: 0.4rem;
-}
-
-.frontmatter-fields input[type="checkbox"] {
-  width: auto;
-  padding: 0;
-}
-
 .frontmatter-other {
-  margin-top: 0.75rem;
-  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
-  border-radius: 0.375rem;
-  padding: 0.5rem 0.75rem;
+  margin-top: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
 }
 
 .frontmatter-other legend {
-  padding: 0 0.25rem;
+  padding: 0 var(--space-1);
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
 }
 
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-  padding: 0.4rem;
-  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
-  border-radius: 0.375rem 0.375rem 0 0;
-  border-bottom: none;
-}
-
-.toolbar button {
-  min-width: 2rem;
-  padding: 0.25rem 0.5rem;
-  background: none;
-  border: 1px solid transparent;
-  border-radius: 0.25rem;
-  color: inherit;
-}
-
-.toolbar button:hover:not(:disabled) {
-  border-color: color-mix(in srgb, currentColor 25%, transparent);
-}
-
-.toolbar button.active {
-  background: color-mix(in srgb, currentColor 15%, transparent);
-}
-
-.toolbar button:disabled {
-  opacity: 0.4;
-}
-
-.toolbar-gap {
-  width: 0.75rem;
-}
-
+/* The editor canvas runs on the content typeface, deliberately distinct from
+   the sans UI chrome around it, so writing reads like writing. Borderless on
+   purpose: nothing boxes it in, so the text is the loudest thing on screen. */
 .editor .tiptap {
-  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
-  border-radius: 0 0 0.375rem 0.375rem;
-  padding: 1rem;
+  font-family: var(--font-content);
+  font-size: 1.1875rem;
+  line-height: 1.7;
+  padding: var(--space-2) 0 0;
   min-height: 24rem;
   outline: none;
+}
+
+.editor .tiptap h1 {
+  font-size: 2.5rem;
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+.editor .tiptap h2 {
+  font-size: 1.625rem;
+  line-height: 1.3;
+  font-weight: 600;
+  margin-top: 1.5rem;
 }
 
 .editor .tiptap > * + * {
@@ -347,15 +1182,17 @@ code {
 }
 
 .editor blockquote {
-  border-left: 3px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-left: 3px solid var(--color-accent);
   margin-left: 0;
-  padding-left: 1rem;
+  padding-left: var(--space-4);
+  color: var(--color-text-muted);
 }
 
 .editor pre {
-  background: color-mix(in srgb, currentColor 8%, transparent);
-  padding: 0.75rem;
-  border-radius: 0.375rem;
+  font-family: var(--font-mono);
+  background: var(--color-surface-subtle);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
   overflow-x: auto;
 }
 
@@ -366,47 +1203,209 @@ code {
 
 .editor th,
 .editor td {
-  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
-  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--color-border-strong);
+  padding: 0.35rem var(--space-2);
 }
 
 .editor hr {
   border: none;
-  border-top: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-top: 1px solid var(--color-border-strong);
+}
+
+/* ==========================================================================
+   Publish review — a review step before publishing, not an immediate action
+   (docs: UX rethink, "Publish as review" direction).
+   ========================================================================== */
+
+.publish-review-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+}
+
+.publish-review-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgb(33 30 26 / 0.42);
+}
+
+:root[data-theme="dark"] .publish-review-scrim {
+  background: rgb(0 0 0 / 0.6);
+}
+
+.publish-review {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 33.75rem;
+  max-width: 92vw;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  box-shadow: var(--shadow-elevated);
+}
+
+.publish-review-header {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  padding: var(--space-4) var(--space-3) var(--space-4) var(--space-5);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.publish-review-header h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.375rem;
+}
+
+.publish-review-body {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.publish-review-section h3 {
+  margin: 0 0 var(--space-3);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.publish-review-section label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.publish-review-section textarea {
+  width: 100%;
+}
+
+.publish-checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.publish-checklist li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 2.75rem;
+  font-size: 0.9375rem;
+}
+
+.check-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.check-ok {
+  color: var(--color-success);
+}
+
+.check-bad {
+  color: var(--color-danger);
+}
+
+.check-warn {
+  color: var(--color-warning);
+}
+
+.publish-diff {
+  margin: 0;
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0 var(--space-4);
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr);
+}
+
+.publish-diff dt {
+  padding: var(--space-3) 0;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.publish-diff dd {
+  margin: 0;
+  padding: var(--space-3) 0;
+  font-size: 0.875rem;
+}
+
+.publish-diff dt:not(:first-child),
+.publish-diff dd:not(:nth-child(2)) {
+  border-top: 1px solid var(--color-border);
+}
+
+.publish-review-footer {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  padding: var(--space-3) var(--space-5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.publish-review-actions {
+  display: flex;
+  gap: var(--space-2);
 }
 
 /* Protected MDX: shown, never edited. */
 .mdx-block {
-  border: 1px dashed color-mix(in srgb, currentColor 35%, transparent);
-  border-radius: 0.375rem;
-  padding: 0.5rem 0.75rem;
-  background: color-mix(in srgb, currentColor 5%, transparent);
+  font-family: var(--font-mono);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-subtle);
 }
 
 .mdx-block-label {
+  font-family: var(--font-ui);
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  opacity: 0.7;
+  color: var(--color-text-muted);
 }
 
 .mdx-block pre {
-  margin: 0.25rem 0 0;
+  margin: var(--space-1) 0 0;
   background: none;
   padding: 0;
   white-space: pre-wrap;
 }
 
 .mdx-inline {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 0.9em;
   padding: 0 0.2em;
   border-radius: 0.2em;
-  background: color-mix(in srgb, currentColor 10%, transparent);
+  background: var(--color-surface-subtle);
 }
 
 .ProseMirror-selectednode {
-  outline: 2px solid #2e7d32;
+  outline: 2px solid var(--color-accent);
 }
 
 /* --- slash menu --- */
@@ -416,31 +1415,33 @@ code {
   z-index: 10;
   list-style: none;
   margin: 0;
-  padding: 0.25rem;
+  padding: var(--space-1);
   min-width: 15rem;
   max-height: 18rem;
   overflow-y: auto;
-  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
-  border-radius: 0.375rem;
-  background: Canvas;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.15);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-elevated);
 }
 
 .slash-menu button {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
+  gap: var(--space-4);
   width: 100%;
-  padding: 0.35rem 0.5rem;
+  min-height: 2rem;
+  padding: 0.35rem var(--space-2);
   background: none;
   border: none;
-  border-radius: 0.25rem;
+  border-radius: var(--radius-sm);
   color: inherit;
   text-align: left;
+  font-weight: 400;
 }
 
 .slash-menu button.selected {
-  background: color-mix(in srgb, currentColor 12%, transparent);
+  background: var(--color-accent-soft);
 }
 
 /* --- live collaboration --- */
@@ -448,11 +1449,11 @@ code {
 .live-status {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #2e7d32;
+  color: var(--color-success);
 }
 
 .live-status.pending {
-  color: #ef6c00;
+  color: var(--color-warning);
 }
 
 /* Other people's carets, from CollaborationCaret. */
@@ -470,36 +1471,24 @@ code {
   position: absolute;
   top: -1.4em;
   left: -1px;
+  font-family: var(--font-ui);
   font-size: 0.75rem;
   font-weight: 600;
   line-height: 1;
   padding: 0.15rem 0.3rem;
-  border-radius: 0.25rem 0.25rem 0.25rem 0;
+  border-radius: var(--radius-sm) var(--radius-sm) var(--radius-sm) 0;
   white-space: nowrap;
   color: white;
   user-select: none;
 }
 
-.frontmatter-mode {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  margin-top: 0.5rem;
-}
-
-.frontmatter-mode button {
-  font-size: 0.8125rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
-  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
-  background: none;
-  color: inherit;
-}
+/* ==========================================================================
+   Media library
+   ========================================================================== */
 
 .media-layout {
   display: flex;
-  gap: 1rem;
+  gap: var(--space-4);
   align-items: flex-start;
 }
 
@@ -510,30 +1499,38 @@ code {
   flex: 1;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .media-grid button {
   display: grid;
-  gap: 0.25rem;
+  gap: var(--space-1);
   width: 100%;
-  padding: 0;
+  min-height: auto;
+  padding: var(--space-1);
   border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   background: none;
   color: inherit;
   text-align: left;
+  font-weight: 400;
+}
+
+.media-grid button:hover {
+  background: var(--color-surface-subtle);
 }
 
 .media-grid button[aria-current="true"] {
-  border-color: currentColor;
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
 }
 
 .media-grid img {
   width: 100%;
   height: 8rem;
   object-fit: cover;
-  border-radius: 0.25rem;
-  background: color-mix(in srgb, currentColor 10%, transparent);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-subtle);
 }
 
 .media-grid .hint {
@@ -543,9 +1540,10 @@ code {
 
 .media-detail {
   width: min(22rem, 40%);
-  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
-  border-radius: 0.375rem;
-  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: var(--color-surface);
 }
 
 .media-detail img {
@@ -560,6 +1558,132 @@ code {
 }
 
 .media-usage {
-  padding-left: 1rem;
+  padding-left: var(--space-4);
   overflow-wrap: anywhere;
+}
+
+/* ==========================================================================
+   Responsive
+   Below 40rem: single-column stacking, full-width tap targets, no
+   horizontal overflow (R-03).
+   ========================================================================== */
+
+@media (max-width: 40rem) {
+  .app-shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .sidebar {
+    max-height: none;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+    overflow-y: visible;
+  }
+
+  /* Only the (potentially long) collections list scrolls, so Media,
+     Repository status, and Sign out stay visible without hunting for a
+     scrollbar inside a short box. */
+  .sidebar-collections {
+    max-height: 11rem;
+    overflow-y: auto;
+  }
+
+  .theme-toggle-floating {
+    position: static;
+    justify-self: end;
+    margin-bottom: var(--space-3);
+  }
+
+  .collection-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .collection-toolbar input[type="search"] {
+    width: 100%;
+  }
+
+  .entry-row {
+    grid-template-columns: 1fr;
+    row-gap: 0.25rem;
+  }
+
+  .frontmatter-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .frontmatter-fields label:has(input[type="checkbox"]),
+  .frontmatter-fields label:has(textarea) {
+    grid-column: 1;
+  }
+
+  .editor-topbar {
+    flex-wrap: wrap;
+    height: auto;
+  }
+
+  .editor-breadcrumb {
+    white-space: normal;
+  }
+
+  .editor-title-block h1 {
+    font-size: 2rem;
+  }
+
+  .editor-main {
+    padding: var(--space-4) var(--space-3);
+  }
+
+  /* A docked side panel squeezed to mobile width would need endless
+     scrolling past a long article to reach it — a full-screen overlay is
+     reachable immediately instead. */
+  .details-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .publish-review {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .publish-review-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .publish-review-actions {
+    justify-content: flex-end;
+  }
+
+  .entry-row .ic {
+    display: none;
+  }
+
+  .media-layout {
+    flex-direction: column;
+  }
+
+  .media-detail {
+    width: 100%;
+  }
+
+  .media-grid {
+    /* Stacked layout: flex's cross-axis stretch does not reliably size a
+       nested grid item here, so auto-fill sees too little width and
+       collapses to one column. An explicit width fixes it. */
+    width: 100%;
+    grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  }
+
+  .card-header,
+  .editor-header,
+  .collection-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }

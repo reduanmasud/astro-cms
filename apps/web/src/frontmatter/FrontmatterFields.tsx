@@ -103,7 +103,7 @@ export function FrontmatterFields({
               }}
             />
             {plan.reason !== undefined && (
-              <small className="hint">{plan.reason} — edit it as YAML</small>
+              <small className="hint">{plan.reason}, edit it as YAML</small>
             )}
             {badYaml[name] === true && (
               <small className="hint" role="alert">

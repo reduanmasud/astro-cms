@@ -61,6 +61,9 @@ export function MediaDetail({
   const deletable = usage !== undefined && used === 0;
 
   async function remove(): Promise<void> {
+    if (!window.confirm(`Permanently delete ${item.filename}? This cannot be undone.`)) {
+      return;
+    }
     setDeleting(true);
     setError(undefined);
     try {
@@ -133,6 +136,7 @@ export function MediaDetail({
 
       <button
         type="button"
+        className="btn btn-danger"
         onClick={() => void remove()}
         disabled={!deletable || deleting}
       >
