@@ -163,10 +163,13 @@ browser.
 
 - **The grid downloads full-size originals.** Mitigated by lazy loading and
   a small page, and honest about where that stops being enough.
-- **A reference count can be stale** between collection sweeps: the git half
-  is refreshed by the scanner, not on demand. A file may show a git reference
-  that a just-merged branch removed. It errs toward showing more usage than
-  exists, which keeps delete conservative — the safe direction.
+- **A reference count can be stale, but only on the git half.** Every read
+  path (the list, a single file's references, and delete) recomputes draft
+  references first, so the draft half always reflects the drafts as of that
+  request. The git half is only refreshed by the scanner, not on demand: a
+  file may show a git reference that a just-merged branch removed. That half
+  still errs toward showing more usage than exists, which keeps delete
+  conservative — the safe direction.
 - **`get_media_references` exposes draft paths and branch names over MCP.**
   No new class of data: `list_documents` already returns paths, and the
   MCP token is separate from the browser session.

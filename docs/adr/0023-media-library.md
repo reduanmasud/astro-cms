@@ -142,11 +142,15 @@ to get there.
 
 ### Risks
 
-- **A reference count can be stale.** ADR-0021 already accepts this: the
-  git half is refreshed by the scanner, not on demand, so a file can show a
-  git reference a just-merged branch already removed. This page inherits
-  that risk rather than adding to it — it errs toward showing more usage
-  than exists, which keeps delete conservative, the safe direction.
+- **A reference count can be stale, but only on the git half.** Every read
+  this page and its API drive — the list, a single file's references, and
+  delete — recomputes draft references first, so the draft half always
+  reflects the drafts as of that request. ADR-0021 already accepts staleness
+  on the git half: it is refreshed by the scanner, not on demand, so a file
+  can show a git reference a just-merged branch already removed. This page
+  inherits that risk rather than adding to it — the git half still errs
+  toward showing more usage than exists, which keeps delete conservative,
+  the safe direction.
 - **`get_media_references` exposes draft paths and branch names over
   MCP.** No new class of data reaches it: `list_documents` already returns
   paths, and the MCP token is separate from the browser session.
