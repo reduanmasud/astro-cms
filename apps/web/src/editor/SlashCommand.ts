@@ -20,6 +20,12 @@ export interface SlashMenuState {
 export interface SlashCommandOptions {
   /** Called when the menu opens, moves, or closes (null closes it). */
   onStateChange: (state: SlashMenuState | null) => void;
+  /**
+   * Opens a picker for inserting an already-uploaded file at the current
+   * selection. Omitting it drops "Image from library" from the menu rather
+   * than offering a command that does nothing.
+   */
+  openMediaPicker?: (editor: Editor) => void;
 }
 
 /**
@@ -118,10 +124,17 @@ export const SLASH_COMMANDS: readonly SlashCommandItem[] = [
 ];
 
 export function filterCommands(query: string): SlashCommandItem[] {
+  return filterFrom(SLASH_COMMANDS, query);
+}
+
+function filterFrom(
+  items: readonly SlashCommandItem[],
+  query: string,
+): SlashCommandItem[] {
   const text = query.trim().toLowerCase();
   return text === ""
-    ? [...SLASH_COMMANDS]
-    : SLASH_COMMANDS.filter((item) => item.title.toLowerCase().includes(text));
+    ? [...items]
+    : items.filter((item) => item.title.toLowerCase().includes(text));
 }
 
 /** Typing "/" opens a command menu. React renders the menu itself. */
@@ -135,14 +148,26 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
   },
 
   addProseMirrorPlugins() {
-    const { onStateChange } = this.options;
+    const { onStateChange, openMediaPicker } = this.options;
+    const items: readonly SlashCommandItem[] =
+      openMediaPicker === undefined
+        ? SLASH_COMMANDS
+        : [
+            ...SLASH_COMMANDS,
+            {
+              id: "imageFromLibrary",
+              title: "Image from library",
+              hint: "Choose an uploaded file",
+              run: (editor) => openMediaPicker(editor),
+            },
+          ];
 
     return [
       Suggestion<SlashCommandItem>({
         editor: this.editor,
         char: "/",
         startOfLine: false,
-        items: ({ query }) => filterCommands(query),
+        items: ({ query }) => filterFrom(items, query),
         command: ({
           editor,
           range,

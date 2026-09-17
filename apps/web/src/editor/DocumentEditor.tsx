@@ -16,6 +16,7 @@ import {
   uploadMedia,
   type CmsDocument,
   type DriftReport,
+  type MediaItem,
   type SchemaField,
 } from "../api.ts";
 import {
@@ -25,6 +26,8 @@ import {
   DetailsIcon,
 } from "../Icons.tsx";
 import { editorExtensions, toEditorContent } from "./extensions.ts";
+import { ImageToolbar } from "./ImageToolbar.tsx";
+import { MediaPickerDialog } from "./MediaPickerDialog.tsx";
 import { useCollaboration, type CollabStatus } from "./useCollaboration.ts";
 import { SlashMenu } from "./SlashMenu.tsx";
 import type { SlashMenuState } from "./SlashCommand.ts";
@@ -95,6 +98,7 @@ export function DocumentEditor({
   const [error, setError] = useState<string>();
   const [frontmatter, setFrontmatter] = useState("");
   const [menu, setMenu] = useState<SlashMenuState | null>(null);
+  const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [published, setPublished] = useState<string | null>(null);
   const [conflict, setConflict] = useState<DriftReport | null>(null);
@@ -222,10 +226,17 @@ export function DocumentEditor({
 
   const editor = useEditor(
     {
-      extensions: editorExtensions({ onStateChange: setMenu }, shared, {
-        upload: async (file) => (await uploadMedia(file)).media,
-        onError: setError,
-      }),
+      extensions: editorExtensions(
+        {
+          onStateChange: setMenu,
+          openMediaPicker: () => setMediaPickerOpen(true),
+        },
+        shared,
+        {
+          upload: async (file) => (await uploadMedia(file)).media,
+          onError: setError,
+        },
+      ),
       // A room holds the text; otherwise the draft does.
       ...(shared ? {} : { content: toEditorContent(loaded?.doc ?? EMPTY_DOC) }),
       editable: loaded !== null,
@@ -440,6 +451,7 @@ export function DocumentEditor({
 
             <div className="editor-canvas-wrap">
               <SelectionToolbar editor={editor} />
+              <ImageToolbar editor={editor} />
               <EditorContent editor={editor} className="editor" />
               <SlashMenu state={menu} />
             </div>
@@ -567,6 +579,23 @@ export function DocumentEditor({
           publishing={publishing}
           onClose={() => setReviewOpen(false)}
           onPublish={publish}
+        />
+      )}
+
+      {mediaPickerOpen && (
+        <MediaPickerDialog
+          onClose={() => setMediaPickerOpen(false)}
+          onSelect={(item: MediaItem) => {
+            editor
+              .chain()
+              .focus()
+              .insertContent({
+                type: "image",
+                attrs: { src: item.url, alt: item.filename },
+              })
+              .run();
+            setMediaPickerOpen(false);
+          }}
         />
       )}
     </div>
