@@ -75,10 +75,8 @@ Images still enter only by being pasted or dropped into a post
 (ADR-0018); an insert-from-library picker that reuses is a separate spec.
 
 **There are no thumbnails.** `image-size` reads dimensions out of a file's
-header; it does not decode or resize images. Generating a thumbnail needs a
-native image library, and this repository deliberately keeps native
-dependencies out of its build (ADR-0012 makes the same call for tooling
-generally). Thumbnails would also mean a second stored object per record,
+header; it does not decode or resize images. Thumbnails would also mean a
+second stored object per record,
 collection logic taught to delete both instead of one, and a migration
 run over every file already uploaded. None of that is a small addition to
 this page; it is its own project. The grid instead renders originals,

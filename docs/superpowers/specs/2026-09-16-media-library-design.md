@@ -101,9 +101,8 @@ dropped into a post, and the picker will be how they are reused.
 
 There is no image-processing capability in the project. `image-size` reads
 dimensions out of file headers; it cannot resize. Generating thumbnails means
-a native dependency such as `sharp` — in a repository that deliberately keeps
-native builds off — a second object per record, collection changes to delete
-both, and a migration for every existing upload.
+a second object per record, collection changes to delete both, and a
+migration for every existing upload.
 
 So the grid renders originals, scaled by CSS:
 
