@@ -51,7 +51,11 @@
      used only for actions and focus, never as decoration. */
   --color-accent: #a8532e;
   --color-accent-hover: #8f4726;
-  --color-accent-soft: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+  --color-accent-soft: color-mix(
+    in srgb,
+    var(--color-accent) 12%,
+    var(--color-surface)
+  );
   --color-accent-contrast: #ffffff;
 
   --color-success: #2b6e2f;
@@ -76,7 +80,11 @@
 
   --color-accent: #e08659;
   --color-accent-hover: #ec9970;
-  --color-accent-soft: color-mix(in srgb, var(--color-accent) 16%, var(--color-surface));
+  --color-accent-soft: color-mix(
+    in srgb,
+    var(--color-accent) 16%,
+    var(--color-surface)
+  );
   --color-accent-contrast: #241207;
 
   --color-success: #66bb6a;
@@ -208,7 +216,10 @@ code {
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   font-weight: 500;
-  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
 }
 
 .btn:disabled {
@@ -264,7 +275,11 @@ code {
 }
 
 .btn-warning:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface));
+  background: color-mix(
+    in srgb,
+    var(--color-warning) 10%,
+    var(--color-surface)
+  );
 }
 
 input,

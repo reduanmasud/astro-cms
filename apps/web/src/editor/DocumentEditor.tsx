@@ -18,7 +18,12 @@ import {
   type DriftReport,
   type SchemaField,
 } from "../api.ts";
-import { ChevronLeftIcon, CloseIcon, CodeIcon, DetailsIcon } from "../Icons.tsx";
+import {
+  ChevronLeftIcon,
+  CloseIcon,
+  CodeIcon,
+  DetailsIcon,
+} from "../Icons.tsx";
 import { editorExtensions, toEditorContent } from "./extensions.ts";
 import { useCollaboration, type CollabStatus } from "./useCollaboration.ts";
 import { SlashMenu } from "./SlashMenu.tsx";
@@ -351,7 +356,9 @@ export function DocumentEditor({
           <UndoRedo editor={editor} />
           <button
             type="button"
-            className={detailsOpen ? "btn btn-secondary active" : "btn btn-secondary"}
+            className={
+              detailsOpen ? "btn btn-secondary active" : "btn btn-secondary"
+            }
             aria-expanded={detailsOpen}
             aria-controls="details-panel"
             onClick={() => setDetailsOpen((open) => !open)}
@@ -411,7 +418,9 @@ export function DocumentEditor({
                     }
                     aria-hidden="true"
                   />
-                  {loaded.document.status === "published" ? "Published" : "Draft"}
+                  {loaded.document.status === "published"
+                    ? "Published"
+                    : "Draft"}
                 </span>
                 <span className="hint">
                   {stats.words} word{stats.words === 1 ? "" : "s"} ·{" "}
@@ -487,7 +496,9 @@ export function DocumentEditor({
                       const raw = fmDoc.toString();
                       const next = raw.endsWith("\n") ? raw.slice(0, -1) : raw;
                       frontmatterRef.current =
-                        next === "" && loaded.frontmatter === null ? null : next;
+                        next === "" && loaded.frontmatter === null
+                          ? null
+                          : next;
                       setFrontmatter(next);
                       autosave.schedule();
                     }}
@@ -496,7 +507,9 @@ export function DocumentEditor({
               ) : (
                 <>
                   {rawReason !== undefined && (
-                    <p className="hint">{rawReason} Editing it as YAML instead.</p>
+                    <p className="hint">
+                      {rawReason} Editing it as YAML instead.
+                    </p>
                   )}
                   <textarea
                     value={frontmatter}
@@ -533,7 +546,9 @@ export function DocumentEditor({
                   // there is no "controls" mode to switch to — already
                   // editing raw YAML above, so say that plainly instead of
                   // just leaving the toggle silently absent.
-                  <small className="hint">Editing as raw YAML — no form to switch to</small>
+                  <small className="hint">
+                    Editing as raw YAML — no form to switch to
+                  </small>
                 )
               )}
             </div>
@@ -640,7 +655,9 @@ interface WordCountStats {
  * subscription or effect needed, and no risk of showing a count from before
  * the editor's initial content had loaded.
  */
-function wordStats(editor: NonNullable<ReturnType<typeof useEditor>>): WordCountStats {
+function wordStats(
+  editor: NonNullable<ReturnType<typeof useEditor>>,
+): WordCountStats {
   if (editor.isDestroyed) return { words: 0, minutes: 1 };
   const text = editor.getText().trim();
   const words = text === "" ? 0 : text.split(/\s+/).length;

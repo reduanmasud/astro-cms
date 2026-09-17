@@ -107,7 +107,10 @@ export function Sidebar({
         />
       </div>
 
-      <nav aria-label="Collections" className="sidebar-section sidebar-collections">
+      <nav
+        aria-label="Collections"
+        className="sidebar-section sidebar-collections"
+      >
         <div className="sidebar-heading">Collections</div>
         {error !== undefined && (
           <p className="hint" role="alert">
@@ -128,12 +131,15 @@ export function Sidebar({
             type="button"
             className="nav-row"
             aria-current={
-              view.name === "collection" && view.collectionName === collection.name
+              view.name === "collection" &&
+              view.collectionName === collection.name
             }
             onClick={() => onSelectCollection(collection.name)}
           >
             <span className="nav-row-label">{collection.name}</span>
-            <span className="nav-row-count">{collection.entryCount ?? "?"}</span>
+            <span className="nav-row-count">
+              {collection.entryCount ?? "?"}
+            </span>
           </button>
         ))}
       </nav>

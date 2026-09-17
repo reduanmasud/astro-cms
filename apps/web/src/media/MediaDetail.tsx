@@ -61,7 +61,11 @@ export function MediaDetail({
   const deletable = usage !== undefined && used === 0;
 
   async function remove(): Promise<void> {
-    if (!window.confirm(`Permanently delete ${item.filename}? This cannot be undone.`)) {
+    if (
+      !window.confirm(
+        `Permanently delete ${item.filename}? This cannot be undone.`,
+      )
+    ) {
       return;
     }
     setDeleting(true);

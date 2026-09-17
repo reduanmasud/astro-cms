@@ -23,7 +23,10 @@ function formatEdited(draft: DocumentSummary | undefined): string {
 }
 
 /** "new-post.md", or "new-post-2.md", "new-post-3.md"… past the first collision. */
-function nextDraftPath(collection: CollectionSummary, existingPaths: string[]): string {
+function nextDraftPath(
+  collection: CollectionSummary,
+  existingPaths: string[],
+): string {
   const dir = collection.contentPath ?? "src/content";
   const ext = collection.formats[0] ?? "md";
   const taken = new Set(existingPaths);
@@ -123,7 +126,12 @@ export function CollectionEntries({
           type="button"
           className="btn btn-primary"
           onClick={() =>
-            void open(nextDraftPath(collection, allRows.map((row) => row.path)))
+            void open(
+              nextDraftPath(
+                collection,
+                allRows.map((row) => row.path),
+              ),
+            )
           }
         >
           <PlusIcon />
@@ -193,7 +201,9 @@ export function CollectionEntries({
             <span className="entry-status">
               <span
                 className={
-                  row.draft !== undefined ? "dot dot-draft" : "dot dot-published"
+                  row.draft !== undefined
+                    ? "dot dot-draft"
+                    : "dot dot-published"
                 }
                 aria-hidden="true"
               />
@@ -211,7 +221,9 @@ export function CollectionEntries({
         {rows.length === 0 && allRows.length > 0 && (
           <p className="hint entry-empty">No matches.</p>
         )}
-        {allRows.length === 0 && <p className="hint entry-empty">No entries yet.</p>}
+        {allRows.length === 0 && (
+          <p className="hint entry-empty">No entries yet.</p>
+        )}
       </div>
     </main>
   );

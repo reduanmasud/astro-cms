@@ -30,7 +30,9 @@ function keepSelection(event: MouseEvent): void {
  * live selection range works for exactly whatever the user actually
  * selected, every time.
  */
-export function SelectionToolbar({ editor }: SelectionToolbarProps): JSX.Element | null {
+export function SelectionToolbar({
+  editor,
+}: SelectionToolbarProps): JSX.Element | null {
   const [position, setPosition] = useState<Position | null>(null);
 
   useEffect(() => {

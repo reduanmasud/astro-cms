@@ -15,7 +15,9 @@ export function ThemeToggle({
   return (
     <button
       type="button"
-      className={floating ? "theme-toggle theme-toggle-floating" : "theme-toggle"}
+      className={
+        floating ? "theme-toggle theme-toggle-floating" : "theme-toggle"
+      }
       onClick={onToggle}
       aria-pressed={theme === "dark"}
     >

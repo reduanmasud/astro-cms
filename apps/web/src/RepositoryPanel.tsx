@@ -14,7 +14,9 @@ export interface RepositoryPanelProps {
 }
 
 /** Shows whether GitHub is connected and the token has what the CMS needs. */
-export function RepositoryPanel({ onClose }: RepositoryPanelProps): JSX.Element {
+export function RepositoryPanel({
+  onClose,
+}: RepositoryPanelProps): JSX.Element {
   const [state, setState] = useState<State>({ status: "loading" });
 
   // Bumping this re-runs the effect, which fetches the status again.
@@ -51,9 +53,7 @@ export function RepositoryPanel({ onClose }: RepositoryPanelProps): JSX.Element 
         </button>
       </header>
       <section className="card" aria-label="Repository status">
-        {state.status === "loading" && (
-          <p className="hint">Checking GitHub…</p>
-        )}
+        {state.status === "loading" && <p className="hint">Checking GitHub…</p>}
         {state.status === "error" && <p role="alert">{state.message}</p>}
         {state.status === "loaded" && <Report report={state.report} />}
       </section>

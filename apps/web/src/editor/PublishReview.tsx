@@ -1,4 +1,8 @@
-import { parseDocument, type EditorDoc, type EditorNode } from "@astro-cms/markdown";
+import {
+  parseDocument,
+  type EditorDoc,
+  type EditorNode,
+} from "@astro-cms/markdown";
 import type { Editor } from "@tiptap/react";
 import { useEffect, useState, type JSX } from "react";
 import { getDrift, type CmsDocument, type SchemaField } from "../api.ts";
@@ -75,14 +79,21 @@ interface Baseline {
  */
 function diffAgainstBase(
   baseline: Baseline | undefined,
-  current: { text: string; fmDoc: FrontmatterDocument | undefined; imageCount: number },
+  current: {
+    text: string;
+    fmDoc: FrontmatterDocument | undefined;
+    imageCount: number;
+  },
   format: "md" | "mdx",
 ): { body: string; frontmatter: string; media: string } {
   if (baseline === undefined || baseline.baseContent === null) {
     return {
       body: "New file — nothing to compare yet.",
       frontmatter: "New file",
-      media: current.imageCount === 0 ? "No images" : `${String(current.imageCount)} image(s)`,
+      media:
+        current.imageCount === 0
+          ? "No images"
+          : `${String(current.imageCount)} image(s)`,
     };
   }
 
@@ -93,19 +104,18 @@ function diffAgainstBase(
 
   let frontmatterSummary = "No changes";
   if (current.fmDoc !== undefined) {
-    const keys = new Set([
-      ...current.fmDoc.keys(),
-      ...(baseFm?.keys() ?? []),
-    ]);
+    const keys = new Set([...current.fmDoc.keys(), ...(baseFm?.keys() ?? [])]);
     const changed = [...keys].filter((key) => {
       const before = baseFm?.get(key);
       const after = current.fmDoc?.get(key);
       return JSON.stringify(before) !== JSON.stringify(after);
     });
-    if (changed.length > 0) frontmatterSummary = `${changed.join(", ")} changed`;
+    if (changed.length > 0)
+      frontmatterSummary = `${changed.join(", ")} changed`;
   }
 
-  const baseImageCount = (baseline.baseContent.match(/!\[[^\]]*\]\(/g) ?? []).length;
+  const baseImageCount = (baseline.baseContent.match(/!\[[^\]]*\]\(/g) ?? [])
+    .length;
   const mediaDelta = current.imageCount - baseImageCount;
 
   return {
@@ -142,7 +152,12 @@ export function PublishReview({
 
   useEffect(() => {
     getDrift(document.id)
-      .then((report) => setBaseline({ baseContent: report.baseContent, drifted: report.drifted }))
+      .then((report) =>
+        setBaseline({
+          baseContent: report.baseContent,
+          drifted: report.drifted,
+        }),
+      )
       .catch(() => setBaseline(undefined));
   }, [document.id]);
 
@@ -168,13 +183,21 @@ export function PublishReview({
   const blocked = checks.some((check) => check.tone === "bad");
   const diff = diffAgainstBase(
     baseline,
-    { text: editor.getText(), fmDoc, imageCount: countImages(editor.getJSON() as EditorDoc) },
+    {
+      text: editor.getText(),
+      fmDoc,
+      imageCount: countImages(editor.getJSON() as EditorDoc),
+    },
     document.format,
   );
 
   return (
     <div className="publish-review-overlay">
-      <div className="publish-review-scrim" onClick={onClose} aria-hidden="true" />
+      <div
+        className="publish-review-scrim"
+        onClick={onClose}
+        aria-hidden="true"
+      />
       <section
         role="dialog"
         aria-modal="true"
@@ -244,7 +267,11 @@ export function PublishReview({
             {blocked ? "Fix the required items above" : "Ready to publish"}
           </span>
           <div className="publish-review-actions">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={onClose}
+            >
               Cancel
             </button>
             <button
