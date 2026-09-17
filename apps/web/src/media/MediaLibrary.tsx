@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type JSX } from "react";
+import { useCallback, useEffect, useRef, useState, type JSX } from "react";
 import { listMedia, type MediaItem } from "../api.ts";
 import { MediaDetail } from "./MediaDetail.tsx";
 
@@ -25,14 +25,22 @@ export function MediaLibrary({ onClose }: MediaLibraryProps): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [done, setDone] = useState(false);
 
+  // Only the newest request may apply its answer. Without this, a slow
+  // response can land after a faster newer one — showing a list that
+  // contradicts the filter — and several fast clicks on "Load more" all
+  // send the same offset and each append their page.
+  const latestRequest = useRef(0);
+
   // Pure fetch: every setState here happens inside `.then()`/`.catch()`, not
   // synchronously in its own body. That's what lets an effect call it
   // directly — callers that want the "now loading" flag shown right away
   // (the checkbox, Retry, Load more) set `loading`/`error` themselves before
   // calling this, from their own event handler.
   const load = useCallback((offset: number, unused: boolean) => {
+    const request = ++latestRequest.current;
     listMedia({ unused, limit: PAGE_SIZE, offset })
       .then(({ media }) => {
+        if (request !== latestRequest.current) return;
         setItems((previous) =>
           offset === 0 ? media : [...previous, ...media],
         );
@@ -40,6 +48,7 @@ export function MediaLibrary({ onClose }: MediaLibraryProps): JSX.Element {
         setLoading(false);
       })
       .catch((caught: Error) => {
+        if (request !== latestRequest.current) return;
         setError(caught.message);
         setLoading(false);
       });
