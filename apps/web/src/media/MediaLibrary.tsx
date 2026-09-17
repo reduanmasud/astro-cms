@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type JSX } from "react";
 import { listMedia, type MediaItem } from "../api.ts";
+import { listAction, type ListState } from "./listAction.ts";
 import { MediaDetail } from "./MediaDetail.tsx";
 
 /** Matches the spec: small enough that a page of originals stays reasonable. */
@@ -25,11 +26,18 @@ export function MediaLibrary({ onClose }: MediaLibraryProps): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [done, setDone] = useState(false);
 
-  // Only the newest request may apply its answer. Without this, a slow
-  // response can land after a faster newer one — showing a list that
-  // contradicts the filter — and several fast clicks on "Load more" all
-  // send the same offset and each append their page.
+  // Only the newest request may apply its answer, and only if it was built
+  // from filter/offset values that still match reality when it lands.
+  // Without the first check, a slow response can land after a faster newer
+  // one — showing a list that contradicts the filter. Without the second, a
+  // click that beats React's re-render (so `disabled={loading}` hasn't
+  // applied yet) can fire from a stale closure — e.g. "Load more" clicked
+  // just after unchecking "Unused only" — and send an offset/filter pair
+  // that no longer describes what should be on screen. `listAction` decides
+  // which of "replace", "append", or "discard" applies; see its tests for
+  // the case that motivated it.
   const latestRequest = useRef(0);
+  const applied = useRef<ListState>({ sequence: 0, count: 0, unused: false });
 
   // Pure fetch: every setState here happens inside `.then()`/`.catch()`, not
   // synchronously in its own body. That's what lets an effect call it
@@ -37,18 +45,48 @@ export function MediaLibrary({ onClose }: MediaLibraryProps): JSX.Element {
   // (the checkbox, Retry, Load more) set `loading`/`error` themselves before
   // calling this, from their own event handler.
   const load = useCallback((offset: number, unused: boolean) => {
-    const request = ++latestRequest.current;
+    const sequence = ++latestRequest.current;
     listMedia({ unused, limit: PAGE_SIZE, offset })
       .then(({ media }) => {
-        if (request !== latestRequest.current) return;
+        // `applied.current.unused` is the live filter, not this closure's:
+        // the checkbox handler updates it the moment the filter changes, so
+        // a response built from the filter's old value reads as stale here
+        // even before its own replacement response has arrived.
+        const action = listAction(
+          { sequence, offset, unused },
+          {
+            sequence: latestRequest.current,
+            count: applied.current.count,
+            unused: applied.current.unused,
+          },
+        );
+        if (action === "discard") return;
+
+        applied.current = {
+          sequence,
+          count:
+            action === "replace"
+              ? media.length
+              : applied.current.count + media.length,
+          unused,
+        };
         setItems((previous) =>
-          offset === 0 ? media : [...previous, ...media],
+          action === "replace" ? media : [...previous, ...media],
         );
         setDone(media.length < PAGE_SIZE);
         setLoading(false);
       })
       .catch((caught: Error) => {
-        if (request !== latestRequest.current) return;
+        const action = listAction(
+          { sequence, offset, unused },
+          {
+            sequence: latestRequest.current,
+            count: applied.current.count,
+            unused: applied.current.unused,
+          },
+        );
+        if (action === "discard") return;
+
         setError(caught.message);
         setLoading(false);
       });
@@ -75,10 +113,15 @@ export function MediaLibrary({ onClose }: MediaLibraryProps): JSX.Element {
             type="checkbox"
             checked={unusedOnly}
             onChange={(event) => {
+              const unused = event.target.checked;
+              // Update the live filter synchronously, ahead of the request
+              // this triggers, so an in-flight response for the old filter
+              // is recognised as stale the moment it lands.
+              applied.current = { ...applied.current, unused };
               setLoading(true);
               setError(undefined);
               setSelected(undefined);
-              setUnusedOnly(event.target.checked);
+              setUnusedOnly(unused);
             }}
           />{" "}
           Unused only
@@ -133,6 +176,14 @@ export function MediaLibrary({ onClose }: MediaLibraryProps): JSX.Element {
             key={selected.id}
             item={selected}
             onDeleted={(id) => {
+              // Keep the tracked count in step with what's on screen — the
+              // next "Load more" sends `items.length` as its offset, and
+              // `listAction` only appends when that offset matches this
+              // count.
+              applied.current = {
+                ...applied.current,
+                count: applied.current.count - 1,
+              };
               setItems((previous) => previous.filter((it) => it.id !== id));
               setSelected(undefined);
             }}
