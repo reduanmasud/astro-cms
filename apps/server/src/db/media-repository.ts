@@ -49,6 +49,25 @@ export interface GitReference {
   readonly path: string;
 }
 
+/** A draft that uses a media file, named the way a person reads it. */
+export interface DraftReference {
+  readonly documentId: string;
+  readonly collection: string;
+  readonly path: string;
+}
+
+/** A place in the repository that uses a media file, as a reader gets it. */
+export interface RepoReference {
+  readonly ref: string;
+  readonly path: string;
+}
+
+/** Everywhere one media file is currently used (ADR-0021's two sources). */
+export interface MediaUsage {
+  readonly drafts: DraftReference[];
+  readonly git: RepoReference[];
+}
+
 export interface MediaRepository {
   insert(record: NewMediaRecord): void;
   findById(id: string): MediaRecord | undefined;
@@ -68,6 +87,8 @@ export interface MediaRepository {
   listGitRefs(): string[];
   /** Unused at or before `before`, and still unreferenced now. */
   findDeletable(before: number): MediaRecord[];
+  /** Where one file is used: drafts by path, git references by ref and path. */
+  findReferences(mediaId: string): MediaUsage;
 }
 
 interface MediaRow {
@@ -224,6 +245,29 @@ export function createMediaRepository(db: Db): MediaRepository {
 
     findDeletable(before) {
       return selectDeletable.all(before).map(toRecord);
+    },
+
+    findReferences(mediaId) {
+      const drafts = db
+        .prepare<
+          [string],
+          { documentId: string; collection: string; path: string }
+        >(
+          `SELECT d.id AS documentId, d.collection AS collection, d.path AS path
+             FROM media_references r
+             JOIN documents d ON d.id = r.document_id
+            WHERE r.media_id = ?
+            ORDER BY d.path`,
+        )
+        .all(mediaId);
+      const git = db
+        .prepare<[string], { ref: string; path: string }>(
+          `SELECT ref, path FROM media_git_references
+            WHERE media_id = ?
+            ORDER BY ref, path`,
+        )
+        .all(mediaId);
+      return { drafts, git };
     },
   };
 }
