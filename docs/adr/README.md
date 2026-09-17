@@ -28,3 +28,4 @@ history. Use [`template.md`](template.md) for new records.
 | [0020](0020-mcp-interface.md)                    | MCP on the same app, the same services, its own token                       | accepted | 2026-09-13 |
 | [0021](0021-media-collection.md)                 | Media collection: three reference sources, and proof before deletion        | accepted | 2026-09-15 |
 | [0022](0022-frontmatter-controls.md)             | Frontmatter edited as a YAML document, with schema-driven controls          | accepted | 2026-09-16 |
+| [0023](0023-media-library.md)                    | Media library: references from a shared service, no upload, no thumbnails   | accepted | 2026-09-16 |
