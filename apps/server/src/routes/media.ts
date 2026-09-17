@@ -93,6 +93,10 @@ export function mediaRoutes({ media, references }: Deps): Hono<AuthEnv> {
     });
   });
 
+  routes.get("/:id/references", (c) =>
+    c.json({ references: media.references(c.req.param("id")) }),
+  );
+
   routes.delete("/:id", withName, async (c) => {
     references.recompute();
     await media.delete(c.req.param("id"));

@@ -336,6 +336,36 @@ describe("media API", () => {
     });
   });
 
+  describe("GET /api/media/:id/references", () => {
+    it("reports where a media file is used", async () => {
+      const uploaded = await read(await upload(png()));
+      const mediaId = uploaded.media?.id ?? "";
+
+      const response = await requestJson(
+        harness.app,
+        cookie,
+        "GET",
+        `/api/media/${mediaId}/references`,
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        references: { drafts: [], git: [] },
+      });
+    });
+
+    it("refuses references for a media file that does not exist", async () => {
+      const response = await requestJson(
+        harness.app,
+        cookie,
+        "GET",
+        "/api/media/missing/references",
+      );
+
+      expect(response.status).toBe(404);
+    });
+  });
+
   describe("when storage is not configured", () => {
     it("answers 404 on every media route", async () => {
       const app = buildTestApp({ mediaEnabled: false });
