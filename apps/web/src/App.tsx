@@ -1,10 +1,11 @@
-import { useEffect, useState, type JSX } from "react";
+import { useEffect, useRef, useState, type JSX } from "react";
 import { getSession, logout, type Collaborator, type Session } from "./api.ts";
 import { CollectionEntries } from "./CollectionEntries.tsx";
 import { DisplayNameForm } from "./DisplayNameForm.tsx";
 import { DocumentEditor } from "./editor/DocumentEditor.tsx";
 import { LoginForm } from "./LoginForm.tsx";
 import { MediaLibrary } from "./media/MediaLibrary.tsx";
+import { pathToView, viewToPath, type View } from "./route.ts";
 import { RepositoryPanel } from "./RepositoryPanel.tsx";
 import { Sidebar } from "./Sidebar.tsx";
 import { ThemeToggle } from "./ThemeToggle.tsx";
@@ -16,21 +17,27 @@ type State =
   | { status: "signed-out" }
   | { status: "signed-in"; session: Session };
 
-/** Which screen the signed-in user is on. */
-type View =
-  | { name: "browse" }
-  | { name: "collection"; collectionName: string }
-  | { name: "edit"; documentId: string }
-  | { name: "media" }
-  | { name: "status" };
+/** The collection a view belongs to, so reloading on it can restore both. */
+function collectionOf(view: View): string | undefined {
+  return view.name === "collection" || view.name === "edit"
+    ? view.collectionName
+    : undefined;
+}
 
 export function App(): JSX.Element {
   const [state, setState] = useState<State>({ status: "loading" });
-  const [view, setView] = useState<View>({ name: "browse" });
+  // Read once, from whatever URL the page loaded (or reloaded) on, so a
+  // refresh in the editor or on Media/Status lands back where it was
+  // instead of always resetting to browse.
+  const [view, setView] = useState<View>(() =>
+    pathToView(window.location.pathname),
+  );
   // The sidebar stays on the last-chosen collection while Media/Status/Editor
   // are open on top of it, so closing one of those returns here rather than
   // to the bare "choose a collection" prompt.
-  const [lastCollection, setLastCollection] = useState<string>();
+  const [lastCollection, setLastCollection] = useState<string | undefined>(() =>
+    collectionOf(pathToView(window.location.pathname)),
+  );
   const [theme, toggleTheme] = useTheme();
 
   function goToCollection(collectionName: string): void {
@@ -45,6 +52,36 @@ export function App(): JSX.Element {
         : { name: "browse" },
     );
   }
+
+  // Keeps the URL in sync with `view` (so it can be reloaded or shared) in
+  // both directions: pushes a new URL when `view` changes from in-app
+  // navigation, and, via popstate, updates `view` when the browser's
+  // back/forward buttons change the URL instead. The ref breaks the loop
+  // that would otherwise cause: a popstate-driven `setView` would trigger
+  // the push effect below, which would push right back the entry the user
+  // just navigated away from.
+  const fromPopState = useRef(false);
+  useEffect(() => {
+    const onPopState = (): void => {
+      fromPopState.current = true;
+      setView(pathToView(window.location.pathname));
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (fromPopState.current) {
+      fromPopState.current = false;
+      return;
+    }
+    const path = viewToPath(view);
+    if (window.location.pathname !== path) {
+      window.history.pushState(null, "", path);
+    }
+  }, [view]);
 
   useEffect(() => {
     getSession()
@@ -179,7 +216,13 @@ function Shell({
         <CollectionEntries
           key={view.collectionName}
           collectionName={view.collectionName}
-          onOpen={(documentId) => onView({ name: "edit", documentId })}
+          onOpen={(documentId) =>
+            onView({
+              name: "edit",
+              documentId,
+              collectionName: view.collectionName,
+            })
+          }
         />
       ) : (
         <main className="content">
