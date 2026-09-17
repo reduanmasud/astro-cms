@@ -5,6 +5,7 @@ import {
   type MediaItem,
   type MediaUsage,
 } from "../api.ts";
+import { MediaIcon } from "../Icons.tsx";
 
 export interface MediaDetailProps {
   item: MediaItem;
@@ -31,6 +32,8 @@ export function MediaDetail({
   const [usageError, setUsageError] = useState<string>();
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string>();
+  const [confirming, setConfirming] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Bumped to re-read usage after a delete the server refused: the refusal
   // means something started using the file since this panel last looked.
@@ -60,14 +63,24 @@ export function MediaDetail({
   // request that failed — or has not answered yet — keeps the button off.
   const deletable = usage !== undefined && used === 0;
 
+  useEffect(() => {
+    if (!copied) return;
+    const timeout = window.setTimeout(() => setCopied(false), 2000);
+    return () => window.clearTimeout(timeout);
+  }, [copied]);
+
+  function copyPath(): void {
+    navigator.clipboard.writeText(item.objectKey).then(
+      () => {
+        setCopied(true);
+      },
+      () => {
+        setError("Could not copy the path to the clipboard.");
+      },
+    );
+  }
+
   async function remove(): Promise<void> {
-    if (
-      !window.confirm(
-        `Permanently delete ${item.filename}? This cannot be undone.`,
-      )
-    ) {
-      return;
-    }
     setDeleting(true);
     setError(undefined);
     try {
@@ -76,6 +89,7 @@ export function MediaDetail({
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Delete failed.");
       setDeleting(false);
+      setConfirming(false);
       // Whatever the server knows, this panel does not. Drop the stale
       // answer before re-reading: until the new one arrives, usage is
       // genuinely unknown, and unknown must mean the button stays off.
@@ -86,66 +100,128 @@ export function MediaDetail({
   }
 
   return (
-    <aside className="media-detail">
-      <img src={item.url} alt={item.filename} />
-      <h2>{item.filename}</h2>
-      <dl>
-        <dt>Size</dt>
-        <dd>{readableSize(item.size)}</dd>
-        <dt>Dimensions</dt>
-        <dd>
+    <aside className="media-detail" aria-label="File details">
+      <div className="media-detail-preview">
+        {item.contentType.startsWith("image/") ? (
+          <img src={item.url} alt={item.filename} />
+        ) : (
+          <MediaIcon />
+        )}
+      </div>
+
+      <div>
+        <h2 className="mono">{item.filename}</h2>
+        <p className="media-detail-meta">
+          {item.contentType}
           {item.width !== null && item.height !== null
-            ? `${String(item.width)} × ${String(item.height)}`
-            : "unknown"}
-        </dd>
-        <dt>Uploaded</dt>
-        <dd>
-          {new Date(item.uploadedAt).toLocaleDateString()}
-          {item.uploadedBy ? ` by ${item.uploadedBy.name}` : ""}
-        </dd>
-      </dl>
-
-      <h3>Used in</h3>
-      {usageError !== undefined && (
-        <p className="hint" role="alert">
-          Could not read where this is used: {usageError}
-        </p>
-      )}
-      {usage === undefined && usageError === undefined && (
-        <p className="hint">Checking…</p>
-      )}
-      {usage !== undefined && used === 0 && (
-        <p className="hint">
-          Nothing uses this file
-          {item.unusedSince !== null
-            ? `, since ${new Date(item.unusedSince).toLocaleDateString()}`
+            ? ` · ${String(item.width)} × ${String(item.height)}`
             : ""}
-          . It is collected automatically after the grace period.
+          {` · ${readableSize(item.size)}`}
         </p>
-      )}
-      {usage !== undefined && used > 0 && (
-        <ul className="media-usage">
-          {usage.drafts.map((draft) => (
-            <li key={`d-${draft.documentId}`}>
-              {draft.path} <span className="hint">draft</span>
-            </li>
-          ))}
-          {usage.git.map((reference) => (
-            <li key={`g-${reference.ref}-${reference.path}`}>
-              {reference.path} <span className="hint">{reference.ref}</span>
-            </li>
-          ))}
-        </ul>
+        <p className="media-detail-meta">
+          Uploaded {new Date(item.uploadedAt).toLocaleDateString()}
+          {item.uploadedBy ? ` by ${item.uploadedBy.name}` : ""}
+        </p>
+      </div>
+
+      <div className="media-detail-field">
+        <span>Path</span>
+        <div className="media-path-row">
+          <code>{item.objectKey}</code>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={copyPath}
+          >
+            {copied ? "Copied" : "Copy"}
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="media-detail-field-label">Used in</h3>
+        {usageError !== undefined && (
+          <p className="hint" role="alert">
+            Could not read where this is used: {usageError}
+          </p>
+        )}
+        {usage === undefined && usageError === undefined && (
+          <p className="hint">Checking…</p>
+        )}
+        {usage !== undefined && used === 0 && (
+          <p className="hint">
+            Nothing uses this file
+            {item.unusedSince !== null
+              ? `, since ${new Date(item.unusedSince).toLocaleDateString()}`
+              : ""}
+            . It is collected automatically after the grace period.
+          </p>
+        )}
+        {usage !== undefined && used > 0 && (
+          <ul className="media-usage">
+            {usage.drafts.map((draft) => (
+              <li key={`d-${draft.documentId}`}>
+                {draft.path} <span className="hint">draft</span>
+              </li>
+            ))}
+            {usage.git.map((reference) => (
+              <li key={`g-${reference.ref}-${reference.path}`}>
+                {reference.path} <span className="hint">{reference.ref}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="media-detail-divider" />
+
+      {!confirming && (
+        <div>
+          <button
+            type="button"
+            className="btn btn-danger"
+            onClick={() => setConfirming(true)}
+            disabled={!deletable || deleting}
+          >
+            Delete
+          </button>
+        </div>
       )}
 
-      <button
-        type="button"
-        className="btn btn-danger"
-        onClick={() => void remove()}
-        disabled={!deletable || deleting}
-      >
-        {deleting ? "Deleting…" : "Delete"}
-      </button>
+      {confirming && (
+        <div
+          role="alertdialog"
+          aria-labelledby="media-delete-title"
+          className="media-confirm"
+        >
+          <div className="media-confirm-heading">
+            <strong id="media-delete-title">Delete {item.filename}?</strong>
+            <p>
+              The file is removed from the repository. Entries that link to it
+              will show a broken image.
+            </p>
+          </div>
+          <div className="media-confirm-actions">
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={() => void remove()}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting…" : "Delete file"}
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setConfirming(false)}
+              disabled={deleting}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {error !== undefined && (
         <p className="hint" role="alert">
           {error}

@@ -177,6 +177,17 @@ a {
   stroke-linejoin: round;
 }
 
+.ic-lg {
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -687,15 +698,30 @@ input[type="checkbox"] {
 }
 
 /* The entry table is a data view, not prose: let it use the main pane's
-   full width instead of the narrow centered column the auth/editor/media
-   screens use, so "Create draft" reads as a header action, not a floating,
-   centered afterthought. */
+   full width instead of the narrow centered column the auth/editor screens
+   use, so "Create draft" reads as a header action, not a floating, centered
+   afterthought. */
 .collection-entries {
   /* Wider than the prose-width screens (editor, auth) since this is a data
      table, but still bounded: on a genuinely wide monitor, `max-width: none`
      stretched the entry column and the header's space-between apart into
      awkward, disconnected-looking gaps instead of just filling more room. */
   max-width: 75rem;
+  margin: 0 auto;
+}
+
+/* Same reasoning as .collection-entries: the tile grid plus a 400px detail
+   panel (design: "6 · Media library") needs far more than the 48rem prose
+   column .content defaults to. `width: 100%` matters here in a way it
+   didn't for .collection-entries: `margin: auto` on a grid item drops the
+   default stretch sizing in favor of shrink-to-fit, and this page's own
+   `.media-layout` is itself a grid with an auto-fill track — under
+   shrink-to-fit, auto-fill's intrinsic size is defined as exactly one
+   repetition, collapsing the tile grid to a single column. `width: 100%`
+   restores stretch (up to max-width) so auto-fill sees real space to fill. */
+.media-library {
+  width: 100%;
+  max-width: 80rem;
   margin: 0 auto;
 }
 
@@ -1502,79 +1528,192 @@ input[type="checkbox"] {
    ========================================================================== */
 
 .media-layout {
-  display: flex;
-  gap: var(--space-4);
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 25rem;
+  gap: var(--space-6);
+  align-items: start;
 }
 
 .media-grid {
   list-style: none;
   margin: 0;
   padding: 0;
-  flex: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
   gap: var(--space-3);
 }
 
-.media-grid button {
-  display: grid;
-  gap: var(--space-1);
+.media-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
   width: 100%;
   min-height: auto;
-  padding: var(--space-1);
+  padding: var(--space-2);
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: none;
   color: inherit;
   text-align: left;
   font-weight: 400;
 }
 
-.media-grid button:hover {
+.media-tile:hover {
   background: var(--color-surface-subtle);
 }
 
-.media-grid button[aria-current="true"] {
+.media-tile[aria-current="true"] {
   border-color: var(--color-accent);
-  background: var(--color-accent-soft);
-}
-
-.media-grid img {
-  width: 100%;
-  height: 8rem;
-  object-fit: cover;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-subtle);
-}
-
-.media-grid .hint {
-  font-size: 0.75rem;
-  overflow-wrap: anywhere;
-}
-
-.media-detail {
-  width: min(22rem, 40%);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-3);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
   background: var(--color-surface);
 }
 
-.media-detail img {
+.media-tile-thumb {
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+}
+
+.media-tile-thumb img {
   width: 100%;
-  max-height: 14rem;
+  height: 100%;
+  object-fit: cover;
+}
+
+.media-tile-name {
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 var(--space-1);
+}
+
+.media-detail {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.media-detail-preview {
+  aspect-ratio: 16 / 10;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+}
+
+.media-detail-preview img {
+  width: 100%;
+  height: 100%;
   object-fit: contain;
 }
 
 .media-detail h2 {
-  font-size: 1rem;
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 
+.media-detail-meta {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.media-detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.media-detail-field > span {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.media-detail-field-label {
+  margin: 0 0 var(--space-2);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.media-path-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.media-path-row code {
+  flex-grow: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  min-height: var(--tap-min);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-subtle);
+  font-size: 0.8125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media-detail-divider {
+  height: 1px;
+  background: var(--color-border);
+}
+
 .media-usage {
+  margin: 0;
   padding-left: var(--space-4);
   overflow-wrap: anywhere;
+}
+
+.media-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.media-confirm-heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.media-confirm-heading strong {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.media-confirm-heading p {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.media-confirm-actions {
+  display: flex;
+  gap: var(--space-2);
 }
 
 /* ==========================================================================
@@ -1680,18 +1819,10 @@ input[type="checkbox"] {
   }
 
   .media-layout {
-    flex-direction: column;
-  }
-
-  .media-detail {
-    width: 100%;
+    grid-template-columns: 1fr;
   }
 
   .media-grid {
-    /* Stacked layout: flex's cross-axis stretch does not reliably size a
-       nested grid item here, so auto-fill sees too little width and
-       collapses to one column. An explicit width fixes it. */
-    width: 100%;
     grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
   }
 

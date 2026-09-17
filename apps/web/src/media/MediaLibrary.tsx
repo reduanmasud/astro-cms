@@ -115,31 +115,37 @@ export function MediaLibrary({ onClose }: MediaLibraryProps): JSX.Element {
 
   return (
     <main className="content media-library">
-      <header className="editor-header">
+      <div>
         <button type="button" className="btn btn-ghost" onClick={onClose}>
           ← Back
         </button>
-        <strong>Media</strong>
-        <span className="spacer" />
-        <label>
-          <input
-            type="checkbox"
-            checked={unusedOnly}
-            onChange={(event) => {
-              const unused = event.target.checked;
-              // Update the live filter synchronously, ahead of the request
-              // this triggers, so an in-flight response for the old filter
-              // is recognised as stale the moment it lands.
-              applied.current = { ...applied.current, unused };
-              setLoading(true);
-              setError(undefined);
-              setSelected(undefined);
-              setUnusedOnly(unused);
-            }}
-          />{" "}
+      </div>
+      <div className="collection-header">
+        <div>
+          <h1>Media library</h1>
+          <p className="hint">
+            {items.length} file{items.length === 1 ? "" : "s"}
+          </p>
+        </div>
+        <button
+          type="button"
+          className="chip"
+          aria-pressed={unusedOnly}
+          onClick={() => {
+            const unused = !unusedOnly;
+            // Update the live filter synchronously, ahead of the request
+            // this triggers, so an in-flight response for the old filter
+            // is recognised as stale the moment it lands.
+            applied.current = { ...applied.current, unused };
+            setLoading(true);
+            setError(undefined);
+            setSelected(undefined);
+            setUnusedOnly(unused);
+          }}
+        >
           Unused only
-        </label>
-      </header>
+        </button>
+      </div>
 
       {error !== undefined && (
         <p className="hint" role="alert">
@@ -164,17 +170,20 @@ export function MediaLibrary({ onClose }: MediaLibraryProps): JSX.Element {
             <li key={item.id}>
               <button
                 type="button"
+                className="media-tile"
                 onClick={() => setSelected(item)}
                 aria-current={selected?.id === item.id}
               >
-                <img
-                  src={item.url}
-                  alt={item.filename}
-                  loading="lazy"
-                  width={item.width ?? undefined}
-                  height={item.height ?? undefined}
-                />
-                <span className="hint">{item.filename}</span>
+                <span className="media-tile-thumb">
+                  <img
+                    src={item.url}
+                    alt={item.filename}
+                    loading="lazy"
+                    width={item.width ?? undefined}
+                    height={item.height ?? undefined}
+                  />
+                </span>
+                <span className="mono media-tile-name">{item.filename}</span>
               </button>
             </li>
           ))}
