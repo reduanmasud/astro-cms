@@ -48,9 +48,20 @@ export function parseDocument(
         : [gfmFromMarkdown()],
   });
 
+  const content = blocks(tree.children, body);
   return {
     frontmatter,
-    doc: { type: "doc", content: blocks(tree.children, body) },
+    // A `doc` node with zero children is a valid EditorDoc value (see
+    // isEmptyDoc), but ProseMirror's own schema requires `content: "block+"`
+    // — Tiptap can't render an empty array at all, not even a cursor. A
+    // single empty paragraph is the canonical "nothing written yet" state
+    // every block editor uses, and round-trips back to an empty body
+    // unchanged (see the serializeDocument test below).
+    doc: {
+      type: "doc",
+      content:
+        content.length === 0 ? [{ type: "paragraph", content: [] }] : content,
+    },
   };
 }
 

@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@tiptap/extension-table";
 import Image from "@tiptap/extension-image";
+import Placeholder from "@tiptap/extension-placeholder";
 import StarterKit from "@tiptap/starter-kit";
 import {
   MDX_BLOCK,
@@ -130,6 +131,9 @@ export function editorExtensions(
       codeBlock: { languageClassPrefix: "language-" },
       // Yjs keeps the history when a room is open.
       ...(collaboration ? { undoRedo: false as const } : {}),
+    }),
+    Placeholder.configure({
+      placeholder: "Type / for a heading, image, list or quote.",
     }),
     Table.configure({ resizable: true }),
     TableRow,

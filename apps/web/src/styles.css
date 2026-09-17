@@ -1207,8 +1207,22 @@ input[type="checkbox"] {
   font-size: 1.1875rem;
   line-height: 1.7;
   padding: var(--space-2) 0 0;
-  min-height: 24rem;
+  /* Enough that clicking below the last line still places the cursor at
+     the end, without the empty state reading as a big dead box — the
+     Placeholder extension's ghost text below now fills the top of it
+     instead of leaving that judgment to a disconnected hint underneath. */
+  min-height: 8rem;
   outline: none;
+}
+
+/* Tiptap's Placeholder extension renders ghost text via this exact
+   selector (its own docs), only present on the first, still-empty node. */
+.editor .tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--color-text-muted);
+  pointer-events: none;
 }
 
 .editor .tiptap h1 {

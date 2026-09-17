@@ -443,9 +443,6 @@ export function DocumentEditor({
               <EditorContent editor={editor} className="editor" />
               <SlashMenu state={menu} />
             </div>
-            <p className="hint">
-              Type <code>/</code> for a heading, image, list or quote.
-            </p>
           </article>
         </main>
 

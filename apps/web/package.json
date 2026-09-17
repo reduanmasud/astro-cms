@@ -18,6 +18,7 @@
     "@tiptap/extension-collaboration": "catalog:",
     "@tiptap/extension-collaboration-caret": "catalog:",
     "@tiptap/extension-image": "catalog:",
+    "@tiptap/extension-placeholder": "catalog:",
     "@tiptap/extension-table": "catalog:",
     "@tiptap/pm": "catalog:",
     "@tiptap/react": "catalog:",

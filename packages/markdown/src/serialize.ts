@@ -307,5 +307,14 @@ function alignment(value: unknown): AlignType[] {
 
 /** True when the document has no content at all. */
 export function isEmptyDoc(doc: EditorDoc): boolean {
-  return doc.content.length === 0;
+  if (doc.content.length === 0) return true;
+  // parseDocument represents "nothing written yet" as a single empty
+  // paragraph (ProseMirror's schema has no way to render `content: []`),
+  // not as a zero-length array — that representation still counts as empty.
+  const [only, ...rest] = doc.content;
+  return (
+    rest.length === 0 &&
+    only?.type === "paragraph" &&
+    (only.content ?? []).length === 0
+  );
 }

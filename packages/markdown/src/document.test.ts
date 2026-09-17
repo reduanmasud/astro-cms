@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseDocument, serializeDocument } from "./index.ts";
+import { isEmptyDoc, parseDocument, serializeDocument } from "./index.ts";
 import type { EditorNode } from "./model.ts";
 
 /** Parses, then serializes again: the source a round trip produces. */
@@ -72,6 +72,20 @@ describe("block content", () => {
       type: "orderedList",
       attrs: { start: 3 },
     });
+  });
+
+  it("represents an empty body as a single empty paragraph, not zero blocks", () => {
+    // ProseMirror's schema requires at least one block (`content: "block+"`):
+    // a bare `content: []` renders nothing at all, not even a cursor. This
+    // is the same reason every block editor's "blank page" is one empty
+    // paragraph, not literally nothing.
+    const content = blocks("");
+    expect(content).toEqual([{ type: "paragraph", content: [] }]);
+    expect(isEmptyDoc({ type: "doc", content })).toBe(true);
+  });
+
+  it("round-trips an empty body back to an empty string", () => {
+    expect(roundTrip("")).toBe("");
   });
 });
 
