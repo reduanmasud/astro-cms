@@ -164,7 +164,7 @@ export function MediaLibrary({ onClose }: MediaLibraryProps): JSX.Element {
               </button>
             </li>
           ))}
-          {items.length === 0 && !loading && (
+          {error === undefined && items.length === 0 && !loading && (
             <li className="hint">
               {unusedOnly ? "Nothing is unused." : "No media yet."}
             </li>
