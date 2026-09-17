@@ -69,8 +69,11 @@ export function MediaDetail({
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Delete failed.");
       setDeleting(false);
-      // Whatever the server knows, this panel does not. Re-read the usage
-      // so the list below explains the refusal instead of contradicting it.
+      // Whatever the server knows, this panel does not. Drop the stale
+      // answer before re-reading: until the new one arrives, usage is
+      // genuinely unknown, and unknown must mean the button stays off.
+      setUsage(undefined);
+      setUsageError(undefined);
       setUsageVersion((count) => count + 1);
     }
   }
