@@ -32,6 +32,20 @@ describe("frontmatter", () => {
   it("can be empty", () => {
     expect(roundTrip("---\n---\n\n# Hi\n")).toBe("---\n---\n\n# Hi\n");
   });
+
+  it("is still found when the closing --- has no newline before the body", () => {
+    // Real content found in the wild: malformed by any frontmatter spec,
+    // but something upstream of this CMS produced files shaped exactly
+    // like this, and the alternative — losing every frontmatter field
+    // because the whole file falls through as body text — is worse.
+    const source = "title: Hi\n---Hello.\n";
+    const parsed = parseDocument(`---\n${source}`, "md");
+    expect(parsed.frontmatter).toBe("title: Hi");
+    expect(parsed.doc.content[0]).toMatchObject({
+      type: "paragraph",
+      content: [{ type: "text", text: "Hello." }],
+    });
+  });
 });
 
 describe("block content", () => {

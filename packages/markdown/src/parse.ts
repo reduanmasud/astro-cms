@@ -19,7 +19,14 @@ import {
   type ParsedDocument,
 } from "./model.ts";
 
-const FRONTMATTER = /^---[ \t]*\r?\n([\s\S]*?)\r?\n?---[ \t]*(?:\r?\n|$)/;
+// The last alternative (a lookahead, consumes nothing) exists for real
+// content found in the wild: a closing `---` with the body glued directly
+// onto the same line, no newline at all — malformed by any spec, but
+// something upstream of this CMS produced files shaped exactly that way,
+// and silently losing every field in the frontmatter (this regex failing
+// to match at all) is a worse failure than accepting it.
+const FRONTMATTER =
+  /^---[ \t]*\r?\n([\s\S]*?)\r?\n?---[ \t]*(?:\r?\n|$|(?=\S))/;
 
 /** Splits `---` frontmatter from the body without parsing the YAML. */
 export function splitFrontmatter(source: string): {
