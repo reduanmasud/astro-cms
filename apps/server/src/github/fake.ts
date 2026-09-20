@@ -96,6 +96,14 @@ export function createFakeGitHubClient({
       return Promise.resolve(filesAt(ref)?.get(path));
     },
 
+    readBinaryFile(path, ref) {
+      guard();
+      const content = filesAt(ref)?.get(path);
+      return Promise.resolve(
+        content === undefined ? undefined : Buffer.from(content, "utf8"),
+      );
+    },
+
     createBranch(branch, fromSha) {
       guard();
       if (branches.has(branch)) {

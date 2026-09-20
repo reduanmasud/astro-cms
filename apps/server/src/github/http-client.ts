@@ -105,6 +105,27 @@ export function createHttpGitHubClient({
       : text(record(asJson(data), "object"), "sha");
   }
 
+  /** The file's raw base64 content, undecoded — shared by readFile/readBinaryFile. */
+  async function readBase64(
+    path: string,
+    ref: string,
+  ): Promise<string | undefined> {
+    const query = new URLSearchParams({ ref });
+    const data = await requestOptional(
+      `/contents/${encodePath(path)}?${query.toString()}`,
+    );
+    if (!isJson(data) || data.type !== "file") return undefined;
+
+    // The contents API omits content for files over 1 MB; fetch the blob instead.
+    if (data.encoding === "none") {
+      const blob = asJson(
+        await request("GET", `/git/blobs/${text(data, "sha")}`),
+      );
+      return text(blob, "content");
+    }
+    return text(data, "content");
+  }
+
   return {
     async getRepository(): Promise<RepositoryInfo> {
       const { data: body, headers } = await requestWithHeaders("GET", "");
@@ -141,20 +162,13 @@ export function createHttpGitHubClient({
     },
 
     async readFile(path, ref) {
-      const query = new URLSearchParams({ ref });
-      const data = await requestOptional(
-        `/contents/${encodePath(path)}?${query.toString()}`,
-      );
-      if (!isJson(data) || data.type !== "file") return undefined;
+      const base64 = await readBase64(path, ref);
+      return base64 === undefined ? undefined : decodeBase64(base64);
+    },
 
-      // The contents API omits content for files over 1 MB; fetch the blob instead.
-      if (data.encoding === "none") {
-        const blob = asJson(
-          await request("GET", `/git/blobs/${text(data, "sha")}`),
-        );
-        return decodeBase64(text(blob, "content"));
-      }
-      return decodeBase64(text(data, "content"));
+    async readBinaryFile(path, ref) {
+      const base64 = await readBase64(path, ref);
+      return base64 === undefined ? undefined : Buffer.from(base64, "base64");
     },
 
     async createBranch(branch, fromSha) {

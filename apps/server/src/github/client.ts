@@ -14,6 +14,12 @@ export interface GitHubClient {
   listFiles(ref: string): Promise<string[]>;
   /** UTF-8 file content at `ref`, or undefined if there is no file at `path`. */
   readFile(path: string, ref: string): Promise<string | undefined>;
+  /**
+   * Raw file bytes at `ref`, or undefined if there is no file at `path`.
+   * For binary content (images) that `readFile`'s UTF-8 decoding would
+   * corrupt.
+   */
+  readBinaryFile(path: string, ref: string): Promise<Buffer | undefined>;
   /** Creates `branch` pointing at `fromSha`. */
   createBranch(branch: string, fromSha: string): Promise<void>;
   /**

@@ -236,6 +236,7 @@ export function DocumentEditor({
           upload: async (file) => (await uploadMedia(file)).media,
           onError: setError,
         },
+        loaded?.document.path ?? "",
       ),
       // A room holds the text; otherwise the draft does.
       ...(shared ? {} : { content: toEditorContent(loaded?.doc ?? EMPTY_DOC) }),

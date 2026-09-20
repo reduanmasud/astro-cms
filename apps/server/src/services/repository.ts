@@ -44,6 +44,8 @@ export interface RepositoryService {
   listFiles(ref?: string): Promise<string[]>;
   /** File content at `ref` (default: the base branch), or undefined. */
   readFile(path: string, ref?: string): Promise<string | undefined>;
+  /** Raw file bytes at `ref` (default: the base branch), or undefined. */
+  readBinaryFile(path: string, ref?: string): Promise<Buffer | undefined>;
   /**
    * Commits `changes` to a `cms/` branch and makes sure it has an open pull
    * request: creates the branch from the base head and the pull request when
@@ -112,6 +114,11 @@ export function createRepositoryService({
     async readFile(path, ref = baseBranch) {
       assertSafePath(path);
       return github.readFile(path, ref);
+    },
+
+    async readBinaryFile(path, ref = baseBranch) {
+      assertSafePath(path);
+      return github.readBinaryFile(path, ref);
     },
 
     async saveToBranch({ branch, message, changes, pullRequest }) {

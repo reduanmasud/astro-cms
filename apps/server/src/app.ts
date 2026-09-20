@@ -6,6 +6,7 @@ import { GitHubError } from "./github/client.ts";
 import { authenticate, type AuthEnv } from "./http/authenticate.ts";
 import { apiError } from "./http/errors.ts";
 import type { RateLimiter } from "./lib/rate-limiter.ts";
+import { assetRoutes } from "./routes/assets.ts";
 import { collabRoutes } from "./routes/collab.ts";
 import { collectionRoutes } from "./routes/collections.ts";
 import { mediaErrorResponse, mediaRoutes } from "./routes/media.ts";
@@ -119,6 +120,7 @@ export function createApp({
     documentRoutes({ documents, drafts, collab, publish }),
   );
   app.route("/api/media", mediaRoutes({ media, references: mediaReferences }));
+  app.route("/api/repo-asset", assetRoutes(repository));
   app.route(
     "/api/mcp",
     mcpRoutes({

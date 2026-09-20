@@ -12,7 +12,6 @@ import {
   TableHeader,
   TableRow,
 } from "@tiptap/extension-table";
-import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import StarterKit from "@tiptap/starter-kit";
 import {
@@ -23,6 +22,7 @@ import {
 } from "@astro-cms/markdown";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import type * as Y from "yjs";
+import { createDocumentImage } from "./assetImage.ts";
 import {
   DEFAULT_IMAGE_UPLOAD,
   ImageUpload,
@@ -123,6 +123,8 @@ export function editorExtensions(
   slash?: SlashCommandOptions,
   collaboration?: CollaborationOptions,
   images?: ImageUploadOptions,
+  /** The document's own repository path, for resolving relative image srcs. */
+  documentPath = "",
 ): Extensions {
   return [
     StarterKit.configure({
@@ -140,7 +142,10 @@ export function editorExtensions(
     TableHeader,
     TableCell,
     // Inline, because a Markdown image is phrasing content inside a paragraph.
-    Image.configure({ inline: true, allowBase64: false }),
+    createDocumentImage(documentPath).configure({
+      inline: true,
+      allowBase64: false,
+    }),
     ImageUpload.configure(images ?? DEFAULT_IMAGE_UPLOAD),
     MdxBlock,
     MdxInline,
