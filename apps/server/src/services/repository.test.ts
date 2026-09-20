@@ -64,6 +64,13 @@ describe("verifyAccess", () => {
     await expect(missing.verifyAccess()).rejects.toThrow(
       /not found or not visible/,
     );
+    // The single most common cause: a fine-grained token whose "Resource
+    // owner" is the user's personal account cannot see organization
+    // repositories at all — GitHub reports that identically to a repository
+    // that does not exist, so the error explains the one thing to check.
+    await expect(missing.verifyAccess()).rejects.toThrow(
+      /Resource owner.*must be set to that organization/,
+    );
   });
 });
 

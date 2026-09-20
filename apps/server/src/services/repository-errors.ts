@@ -24,7 +24,14 @@ export function explainAccessError(error: unknown): Error {
       );
     case 404:
       return new RepositoryError(
-        "Repository not found or not visible to GITHUB_TOKEN (404). Check GITHUB_OWNER, GITHUB_REPOSITORY, and the token's repository access.",
+        "Repository not found or not visible to GITHUB_TOKEN (404). Check " +
+          "GITHUB_OWNER and GITHUB_REPOSITORY are correct, and that the " +
+          "token was granted access to that repository. If GITHUB_OWNER is " +
+          'an organization: a fine-grained token\'s "Resource owner" must ' +
+          "be set to that organization, not your personal account — a " +
+          "personal-account token cannot see organization repositories at " +
+          "all, and GitHub reports that the same way as a repository that " +
+          "does not exist.",
       );
     default:
       return new RepositoryError(

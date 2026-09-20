@@ -56,6 +56,18 @@ Then connect the one GitHub repository the CMS edits:
   limited to that repository, with read and write access to **Contents** and
   **Pull requests**.
 
+  If `GITHUB_OWNER` is an **organization**, not your own username, set
+  **Resource owner** to that organization when creating the token, not your
+  personal account (the default). A token scoped to your personal account
+  cannot see organization repositories at all, even public ones — GitHub
+  answers every request for one with a 404, indistinguishable from the repo
+  not existing. The organization also has to allow fine-grained tokens in
+  the first place: an org owner can check this under the organization's
+  **Settings → Personal access tokens → Settings**; some organizations
+  restrict or block them, in which case a
+  [classic token](https://github.com/settings/tokens/new) with the `repo`
+  scope is the alternative.
+
 The server checks the token, push access, and base branch at startup, and
 stops with an explanation if something is wrong.
 
