@@ -23,5 +23,11 @@ COPY --from=build /repo/apps/web/dist /usr/share/nginx/html
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
+# 127.0.0.1, not localhost: this image's /etc/hosts resolves "localhost" to
+# ::1 first, but nginx.conf only listens on IPv4 (`listen 80;`, no
+# `listen [::]:80;`) — wget tried the IPv6 loopback, got connection
+# refused, and reported the container unhealthy even though the site
+# itself was serving every real request fine (real traffic always arrives
+# over IPv4, via the host's reverse proxy).
 HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=5 \
-  CMD wget -q -O- http://localhost/ >/dev/null || exit 1
+  CMD wget -q -O- http://127.0.0.1/ >/dev/null || exit 1
